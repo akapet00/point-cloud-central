@@ -13,6 +13,7 @@ INITIAL_NEIGHBOR_COUNT = 224
 DISTANCE_DECAY = 2.0
 TUKEY_CUTOFFS = (4.62, 2.77)
 MAD_TO_SIGMA = 1.4826
+MAX_BROAD_BLEND = 0.1
 BATCH_SIZE = 2_048
 
 
@@ -35,10 +36,10 @@ def estimate_normals(
 ) -> np.ndarray:
     """Estimate normals from broad initialization and local robust PCA.
 
-    A 224-neighbor Gaussian tail stabilizes the provisional tangent under
-    positional noise. Two Tukey-biweight IRLS steps then refine that normal
-    using only the query-local 112-neighbor patch, limiting broad-neighborhood
-    bias and rejecting extreme point-to-plane residuals.
+    A 224-neighbor Gaussian fit stabilizes a provisional tangent. Two local
+    Tukey-biweight refinements reject geometric contamination. The final
+    normal eigengap then controls a small shrinkage toward the broad tangent,
+    adding noise averaging only where the local normal is ambiguous.
     """
     del query_indices
     if neighbor_indices.shape[1] < INITIAL_NEIGHBOR_COUNT:
@@ -73,8 +74,9 @@ def estimate_normals(
             initial_centered,
             optimize=True,
         )
-        _, eigenvectors = np.linalg.eigh(covariance)
+        eigenvalues, eigenvectors = np.linalg.eigh(covariance)
         normals = eigenvectors[:, :, 0]
+        broad_normals = normals.copy()
 
         neighborhoods = initial_neighborhoods[:, :NEIGHBOR_COUNT]
         distance_weights = initial_weights[:, :NEIGHBOR_COUNT]
@@ -99,9 +101,24 @@ def estimate_normals(
             covariance = np.einsum(
                 "nk,nki,nkj->nij", weights, centered, centered, optimize=True
             )
-            _, eigenvectors = np.linalg.eigh(covariance)
+            eigenvalues, eigenvectors = np.linalg.eigh(covariance)
             normals = eigenvectors[:, :, 0]
 
-        estimated[start:stop] = normals
+        ambiguity = np.divide(
+            eigenvalues[:, 0],
+            eigenvalues[:, 1],
+            out=np.zeros_like(eigenvalues[:, 0]),
+            where=eigenvalues[:, 1] > 0.0,
+        )
+        blend = MAX_BROAD_BLEND * np.clip(ambiguity, 0.0, 1.0)
+        alignment = np.where(
+            np.einsum("ni,ni->n", normals, broad_normals, optimize=True) < 0.0,
+            -1.0,
+            1.0,
+        )
+        blended = (1.0 - blend[:, None]) * normals
+        blended += (blend * alignment)[:, None] * broad_normals
+        blended /= np.linalg.norm(blended, axis=1, keepdims=True)
+        estimated[start:stop] = blended
 
     return estimated
