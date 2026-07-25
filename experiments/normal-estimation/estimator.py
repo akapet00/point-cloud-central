@@ -16,6 +16,17 @@ MAD_TO_SIGMA = 1.4826
 BATCH_SIZE = 2_048
 
 
+def _weighted_median(values: np.ndarray, weights: np.ndarray) -> np.ndarray:
+    """Return one weighted median per row, retaining a singleton axis."""
+    order = np.argsort(values, axis=1, kind="stable")
+    sorted_values = np.take_along_axis(values, order, axis=1)
+    sorted_weights = np.take_along_axis(weights, order, axis=1)
+    cumulative_weights = np.cumsum(sorted_weights, axis=1)
+    threshold = 0.5 * sorted_weights.sum(axis=1, keepdims=True)
+    median_indices = np.argmax(cumulative_weights >= threshold, axis=1)
+    return np.take_along_axis(sorted_values, median_indices[:, None], axis=1)
+
+
 def estimate_normals(
     points: np.ndarray,
     query_indices: np.ndarray,
@@ -71,9 +82,9 @@ def estimate_normals(
         scale_floor = np.finfo(np.float64).eps * np.maximum(bandwidth, 1.0)
         for robust_cutoff in ROBUST_CUTOFFS:
             residuals = np.einsum("nki,ni->nk", centered, normals, optimize=True)
-            residual_median = np.median(residuals, axis=1, keepdims=True)
-            robust_scale = MAD_TO_SIGMA * np.median(
-                np.abs(residuals - residual_median), axis=1, keepdims=True
+            residual_median = _weighted_median(residuals, distance_weights)
+            robust_scale = MAD_TO_SIGMA * _weighted_median(
+                np.abs(residuals - residual_median), distance_weights
             )
             robust_scale = np.maximum(robust_scale, scale_floor)
             normalized = residuals / (robust_cutoff * robust_scale)
