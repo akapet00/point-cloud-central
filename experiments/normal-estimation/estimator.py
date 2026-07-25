@@ -36,10 +36,10 @@ def estimate_normals(
     """Estimate normals from broad initialization and local robust PCA.
 
     A 224-neighbor Gaussian tail stabilizes the provisional tangent under
-    positional noise. Two Cauchy IRLS steps then refine that normal using only
-    the query-local 112-neighbor patch, limiting broad-neighborhood bias.
+    positional noise. Its tangent covariance defines an area-preserving
+    anisotropic kernel for two Cauchy refinements on the local 112-neighbor
+    patch, reducing bias from elongated or directionally sampled support.
     """
-    del query_indices
     if neighbor_indices.shape[1] < INITIAL_NEIGHBOR_COUNT:
         msg = f"At least {INITIAL_NEIGHBOR_COUNT} cached neighbors are required"
         raise ValueError(msg)
@@ -72,11 +72,32 @@ def estimate_normals(
             initial_centered,
             optimize=True,
         )
-        _, eigenvectors = np.linalg.eigh(covariance)
+        eigenvalues, eigenvectors = np.linalg.eigh(covariance)
         normals = eigenvectors[:, :, 0]
 
         neighborhoods = initial_neighborhoods[:, :NEIGHBOR_COUNT]
-        distance_weights = initial_weights[:, :NEIGHBOR_COUNT]
+        query_points = points[query_indices[start:stop]]
+        query_offsets = neighborhoods - query_points[:, None, :]
+        local_coordinates = np.einsum(
+            "nki,nij->nkj", query_offsets, eigenvectors, optimize=True
+        )
+        tangent_variances = eigenvalues[:, 1:]
+        variance_floor = np.finfo(np.float64).eps * np.maximum(
+            tangent_variances[:, 1:2], bandwidth * bandwidth
+        )
+        tangent_variances = np.maximum(tangent_variances, variance_floor)
+        area_scale = np.sqrt(np.prod(tangent_variances, axis=1, keepdims=True))
+        anisotropic_squared = local_coordinates[:, :, 0] ** 2 + area_scale * np.sum(
+            local_coordinates[:, :, 1:] ** 2 / tangent_variances[:, None, :],
+            axis=2,
+        )
+        scaled_squared = np.divide(
+            anisotropic_squared,
+            bandwidth * bandwidth,
+            out=np.zeros_like(anisotropic_squared),
+            where=bandwidth > 0.0,
+        )
+        distance_weights = np.exp(-DISTANCE_DECAY * scaled_squared)
         distance_weights /= distance_weights.sum(axis=1, keepdims=True)
         centered = neighborhoods - centroid[:, None, :]
         scale_floor = np.finfo(np.float64).eps * np.maximum(bandwidth, 1.0)
