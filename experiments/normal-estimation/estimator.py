@@ -11,7 +11,7 @@ import numpy as np
 NEIGHBOR_COUNT = 112
 DISTANCE_DECAY = 2.0
 ROBUST_CUTOFF = 2.5
-ROBUST_REWEIGHTING_STEPS = 2
+ROBUST_REWEIGHTING_STEPS = 3
 MAD_TO_SIGMA = 1.4826
 BATCH_SIZE = 2_048
 
@@ -22,12 +22,12 @@ def estimate_normals(
     neighbor_indices: np.ndarray,
     neighbor_distances: np.ndarray,
 ) -> np.ndarray:
-    """Estimate unoriented normals with two-step robust weighted PCA.
+    """Estimate unoriented normals with three-step robust weighted PCA.
 
     An initial Gaussian distance-weighted fit supplies a provisional tangent
-    plane. Two Cauchy IRLS steps then limit the covariance leverage of points
-    with large normalized point-to-plane residuals, refining the residuals once
-    from the first robust plane before producing the final normal.
+    plane. Three Cauchy IRLS steps then limit the covariance leverage of points
+    with large normalized point-to-plane residuals, twice refining residuals
+    from the preceding robust plane before producing the final normal.
     """
     del query_indices
     if neighbor_indices.shape[1] < NEIGHBOR_COUNT:
