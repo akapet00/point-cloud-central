@@ -25,9 +25,9 @@ def estimate_normals(
     """Estimate unoriented normals with two-step robust weighted PCA.
 
     An initial Gaussian distance-weighted fit supplies a provisional tangent
-    plane. Two Cauchy IRLS steps then limit the covariance leverage of points
-    with large normalized point-to-plane residuals, refining the residuals once
-    from the first robust plane before producing the final normal.
+    plane. Two Huber IRLS steps retain full weight for in-scale residuals and
+    reduce the covariance leverage of larger point-to-plane residuals, refining
+    the residuals once from the first robust plane before the final normal.
     """
     del query_indices
     if neighbor_indices.shape[1] < NEIGHBOR_COUNT:
@@ -71,8 +71,14 @@ def estimate_normals(
                 np.abs(residuals - residual_median), axis=1, keepdims=True
             )
             robust_scale = np.maximum(robust_scale, scale_floor)
-            normalized = residuals / (ROBUST_CUTOFF * robust_scale)
-            robust_weights = 1.0 / (1.0 + normalized * normalized)
+            residual_magnitudes = np.abs(residuals)
+            huber_threshold = ROBUST_CUTOFF * robust_scale
+            robust_weights = np.divide(
+                huber_threshold,
+                residual_magnitudes,
+                out=np.ones_like(residuals),
+                where=residual_magnitudes > huber_threshold,
+            )
 
             weights = distance_weights * robust_weights
             weights /= weights.sum(axis=1, keepdims=True)
