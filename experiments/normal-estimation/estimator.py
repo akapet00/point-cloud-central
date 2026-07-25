@@ -15,7 +15,7 @@ FINAL_STATISTIC_COUNT = 32
 INITIAL_NEIGHBOR_COUNT = 224
 DISTANCE_DECAY = 2.0
 TUKEY_CUTOFFS = (4.15, 2.77, 2.77)
-THIRD_REFINEMENT_MAX_THICKNESS = 0.1
+THIRD_REFINEMENT_MAX_ASPECT_RATIO = 0.2
 MAD_TO_SIGMA = 1.4826
 BATCH_SIZE = 2_048
 
@@ -41,8 +41,8 @@ def estimate_normals(
 
     A 224-neighbor Gaussian tail stabilizes the provisional tangent under
     positional noise. Two Tukey-biweight IRLS steps refine that normal using
-    query-local residual statistics. A third step is accepted only for a thin
-    local sheet, where another redescending fit is unlikely to reject noise.
+    query-local residual statistics. A third step is accepted only when its
+    robust thickness is small relative to the fitted patch's tangent spread.
     """
     del query_indices
     if neighbor_indices.shape[1] < INITIAL_NEIGHBOR_COUNT:
@@ -91,6 +91,7 @@ def estimate_normals(
             FINAL_STATISTIC_COUNT,
             FINAL_STATISTIC_COUNT,
         )
+        tangent_spread = np.empty((stop - start, 1), dtype=np.float64)
         for step, (tukey_cutoff, refinement_count, statistic_count) in enumerate(
             zip(TUKEY_CUTOFFS, refinement_counts, statistic_counts, strict=True)
         ):
@@ -120,13 +121,17 @@ def estimate_normals(
                 neighborhoods - centroid[:, None, :],
                 optimize=True,
             )
-            _, eigenvectors = np.linalg.eigh(covariance)
+            eigenvalues, eigenvectors = np.linalg.eigh(covariance)
             refined_normals = eigenvectors[:, :, 0]
             if step == 2:
-                thin_sheet = robust_scale <= THIRD_REFINEMENT_MAX_THICKNESS * bandwidth
+                thin_sheet = robust_scale <= (
+                    THIRD_REFINEMENT_MAX_ASPECT_RATIO * tangent_spread
+                )
                 normals = np.where(thin_sheet, refined_normals, normals)
             else:
                 normals = refined_normals
+                if step == 1:
+                    tangent_spread = np.sqrt(eigenvalues[:, 1:2] + eigenvalues[:, 2:3])
 
         estimated[start:stop] = normals
 
