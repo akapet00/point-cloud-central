@@ -39,10 +39,9 @@ def estimate_normals(
 
     A 224-neighbor Gaussian tail stabilizes the provisional tangent under
     positional noise. Two Tukey-biweight IRLS steps refine that normal; the
-    final 128-point covariance uses robust location and scale from its nearest
-    64 samples so curved tail points cannot define their own leverage.
+    final 128-point covariance uses tangent-plane distance after the first
+    correction and robust statistics from its nearest 64 samples.
     """
-    del query_indices
     if neighbor_indices.shape[1] < INITIAL_NEIGHBOR_COUNT:
         msg = f"At least {INITIAL_NEIGHBOR_COUNT} cached neighbors are required"
         raise ValueError(msg)
@@ -79,13 +78,34 @@ def estimate_normals(
         normals = eigenvectors[:, :, 0]
 
         scale_floor = np.finfo(np.float64).eps * np.maximum(bandwidth, 1.0)
+        query_points = points[query_indices[start:stop]]
         refinement_counts = (NEIGHBOR_COUNT, FINAL_NEIGHBOR_COUNT)
         statistic_counts = (NEIGHBOR_COUNT, FINAL_STATISTIC_COUNT)
-        for tukey_cutoff, refinement_count, statistic_count in zip(
-            TUKEY_CUTOFFS, refinement_counts, statistic_counts, strict=True
+        for pass_index, (tukey_cutoff, refinement_count, statistic_count) in enumerate(
+            zip(TUKEY_CUTOFFS, refinement_counts, statistic_counts, strict=True)
         ):
             neighborhoods = initial_neighborhoods[:, :refinement_count]
-            distance_weights = initial_weights[:, :refinement_count].copy()
+            if pass_index == 0:
+                distance_weights = initial_weights[:, :refinement_count].copy()
+            else:
+                query_offsets = neighborhoods - query_points[:, None, :]
+                normal_offsets = np.einsum(
+                    "nki,ni->nk", query_offsets, normals, optimize=True
+                )
+                tangent_squared = np.maximum(
+                    np.einsum(
+                        "nki,nki->nk", query_offsets, query_offsets, optimize=True
+                    )
+                    - normal_offsets * normal_offsets,
+                    0.0,
+                )
+                scaled_tangent_squared = np.divide(
+                    tangent_squared,
+                    bandwidth * bandwidth,
+                    out=np.zeros_like(tangent_squared),
+                    where=bandwidth > 0.0,
+                )
+                distance_weights = np.exp(-DISTANCE_DECAY * scaled_tangent_squared)
             distance_weights /= distance_weights.sum(axis=1, keepdims=True)
             centered = neighborhoods - centroid[:, None, :]
             residuals = np.einsum("nki,ni->nk", centered, normals, optimize=True)
