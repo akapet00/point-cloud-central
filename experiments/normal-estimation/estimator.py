@@ -107,8 +107,10 @@ def estimate_normals(
             )
             robust_scale = np.maximum(robust_scale, scale_floor)
             normalized = (residuals - residual_median) / (tukey_cutoff * robust_scale)
-            inside = normalized * normalized < 1.0
-            robust_weights = np.square(1.0 - normalized * normalized) * inside
+            compact_profile = np.maximum(1.0 - normalized * normalized, 0.0)
+            robust_weights = (
+                compact_profile if step == 2 else np.square(compact_profile)
+            )
 
             weights = distance_weights * robust_weights
             weights /= weights.sum(axis=1, keepdims=True)
