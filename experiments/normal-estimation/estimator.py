@@ -15,7 +15,7 @@ FINAL_STATISTIC_COUNT = 32
 INITIAL_NEIGHBOR_COUNT = 224
 DISTANCE_DECAY = 2.0
 TUKEY_CUTOFFS = (4.15, 2.77, 2.77)
-THIRD_REFINEMENT_MAX_THICKNESS = 0.1
+THIRD_REFINEMENT_MAX_ASPECT_RATIO = 0.175
 MAD_TO_SIGMA = 1.4826
 BATCH_SIZE = 2_048
 
@@ -120,10 +120,15 @@ def estimate_normals(
                 neighborhoods - centroid[:, None, :],
                 optimize=True,
             )
-            _, eigenvectors = np.linalg.eigh(covariance)
+            eigenvalues, eigenvectors = np.linalg.eigh(covariance)
             refined_normals = eigenvectors[:, :, 0]
-            if step == 2:
-                thin_sheet = robust_scale <= THIRD_REFINEMENT_MAX_THICKNESS * bandwidth
+            if step == 1:
+                tangent_spread = np.sqrt(eigenvalues[:, 1:2] + eigenvalues[:, 2:3])
+                normals = refined_normals
+            elif step == 2:
+                thin_sheet = robust_scale <= (
+                    THIRD_REFINEMENT_MAX_ASPECT_RATIO * tangent_spread
+                )
                 normals = np.where(thin_sheet, refined_normals, normals)
             else:
                 normals = refined_normals
