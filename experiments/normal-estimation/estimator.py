@@ -16,6 +16,7 @@ INITIAL_NEIGHBOR_COUNT = 224
 DISTANCE_DECAY = 2.0
 TUKEY_CUTOFFS = (4.15, 2.77, 2.77)
 THIRD_REFINEMENT_MAX_THICKNESS = 0.1
+THIRD_REFINEMENT_MAX_BROAD_FRACTION = 0.5
 MAD_TO_SIGMA = 1.4826
 BATCH_SIZE = 2_048
 
@@ -41,8 +42,8 @@ def estimate_normals(
 
     A 224-neighbor Gaussian tail stabilizes the provisional tangent under
     positional noise. Two Tukey-biweight IRLS steps refine that normal using
-    query-local residual statistics. A third step is accepted only for a thin
-    local sheet, where another redescending fit is unlikely to reject noise.
+    query-local residual statistics. A third step is accepted only when the
+    local sheet is thin and its thickness contracted from the broad fit.
     """
     del query_indices
     if neighbor_indices.shape[1] < INITIAL_NEIGHBOR_COUNT:
@@ -77,8 +78,9 @@ def estimate_normals(
             initial_centered,
             optimize=True,
         )
-        _, eigenvectors = np.linalg.eigh(covariance)
+        eigenvalues, eigenvectors = np.linalg.eigh(covariance)
         normals = eigenvectors[:, :, 0]
+        broad_thickness = np.sqrt(np.maximum(eigenvalues[:, :1], 0.0))
 
         scale_floor = np.finfo(np.float64).eps * np.maximum(bandwidth, 1.0)
         refinement_counts = (
@@ -124,7 +126,12 @@ def estimate_normals(
             refined_normals = eigenvectors[:, :, 0]
             if step == 2:
                 thin_sheet = robust_scale <= THIRD_REFINEMENT_MAX_THICKNESS * bandwidth
-                normals = np.where(thin_sheet, refined_normals, normals)
+                thickness_contracted = (
+                    robust_scale
+                    <= THIRD_REFINEMENT_MAX_BROAD_FRACTION * broad_thickness
+                )
+                accept_refinement = thin_sheet & thickness_contracted
+                normals = np.where(accept_refinement, refined_normals, normals)
             else:
                 normals = refined_normals
 
