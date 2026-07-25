@@ -10,6 +10,7 @@ import numpy as np
 
 NEIGHBOR_COUNT = 112
 FIRST_REFINEMENT_COUNT = 120
+FIRST_BANDWIDTH_COUNT = 116
 FIRST_STATISTIC_COUNT = 64
 FINAL_NEIGHBOR_COUNT = 128
 FINAL_STATISTIC_COUNT = 32
@@ -43,7 +44,8 @@ def estimate_normals(
     positional noise. Two Tukey-biweight IRLS steps refine that normal; their
     120- and 128-point covariances use robust location and scale from the
     nearest 64 and 32 samples so curved tail points cannot define their own
-    leverage.
+    leverage. The first refinement uses the 116th-neighbor radius to test
+    whether slightly wider weighting stabilizes its noise-sensitive covariance.
     """
     del query_indices
     if neighbor_indices.shape[1] < INITIAL_NEIGHBOR_COUNT:
@@ -83,12 +85,27 @@ def estimate_normals(
 
         scale_floor = np.finfo(np.float64).eps * np.maximum(bandwidth, 1.0)
         refinement_counts = (FIRST_REFINEMENT_COUNT, FINAL_NEIGHBOR_COUNT)
+        bandwidth_counts = (FIRST_BANDWIDTH_COUNT, NEIGHBOR_COUNT)
         statistic_counts = (FIRST_STATISTIC_COUNT, FINAL_STATISTIC_COUNT)
-        for tukey_cutoff, refinement_count, statistic_count in zip(
-            TUKEY_CUTOFFS, refinement_counts, statistic_counts, strict=True
+        for tukey_cutoff, refinement_count, bandwidth_count, statistic_count in zip(
+            TUKEY_CUTOFFS,
+            refinement_counts,
+            bandwidth_counts,
+            statistic_counts,
+            strict=True,
         ):
             neighborhoods = initial_neighborhoods[:, :refinement_count]
-            distance_weights = initial_weights[:, :refinement_count].copy()
+            distances = initial_distances[:, :refinement_count]
+            local_bandwidth = initial_distances[
+                :, bandwidth_count - 1 : bandwidth_count
+            ]
+            local_scaled_squared = np.divide(
+                distances * distances,
+                local_bandwidth * local_bandwidth,
+                out=np.zeros_like(distances, dtype=np.float64),
+                where=local_bandwidth > 0.0,
+            )
+            distance_weights = np.exp(-DISTANCE_DECAY * local_scaled_squared)
             distance_weights /= distance_weights.sum(axis=1, keepdims=True)
             centered = neighborhoods - centroid[:, None, :]
             residuals = np.einsum("nki,ni->nk", centered, normals, optimize=True)
