@@ -41,7 +41,7 @@ def estimate_normals(
     A 224-neighbor Gaussian tail stabilizes the provisional tangent under
     positional noise. Two Tukey-biweight IRLS steps refine that normal; their
     112- and 128-point covariances use robust location and scale from the
-    nearest 64 and 32 samples so curved tail points cannot define their own
+    nearest 34 and 32 samples so curved tail points cannot define their own
     leverage.
     """
     del query_indices
