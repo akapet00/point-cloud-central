@@ -12,6 +12,7 @@ NEIGHBOR_COUNT = 112
 DISTANCE_DECAY = 2.0
 ROBUST_CUTOFF = 2.5
 ROBUST_REWEIGHTING_STEPS = 2
+SECOND_STEP_MAX_EIGENVALUE_RATIO = 0.5
 MAD_TO_SIGMA = 1.4826
 BATCH_SIZE = 2_048
 
@@ -22,12 +23,12 @@ def estimate_normals(
     neighbor_indices: np.ndarray,
     neighbor_distances: np.ndarray,
 ) -> np.ndarray:
-    """Estimate unoriented normals with two-step robust weighted PCA.
+    """Estimate unoriented normals with confidence-gated robust PCA.
 
     An initial Gaussian distance-weighted fit supplies a provisional tangent
-    plane. Two Cauchy IRLS steps then limit the covariance leverage of points
-    with large normalized point-to-plane residuals, refining the residuals once
-    from the first robust plane before producing the final normal.
+    plane. One Cauchy IRLS refinement is always used. The second refinement is
+    accepted only when the initial covariance has a well-separated smallest
+    eigenvalue, indicating that its normal direction is geometrically stable.
     """
     del query_indices
     if neighbor_indices.shape[1] < NEIGHBOR_COUNT:
@@ -60,11 +61,20 @@ def estimate_normals(
             centered,
             optimize=True,
         )
-        _, eigenvectors = np.linalg.eigh(covariance)
+        eigenvalues, eigenvectors = np.linalg.eigh(covariance)
         normals = eigenvectors[:, :, 0]
 
+        eigenvalue_ratio = np.divide(
+            np.maximum(eigenvalues[:, 0], 0.0),
+            eigenvalues[:, 1],
+            out=np.ones(eigenvalues.shape[0], dtype=np.float64),
+            where=eigenvalues[:, 1] > 0.0,
+        )
+        use_second_refinement = eigenvalue_ratio <= SECOND_STEP_MAX_EIGENVALUE_RATIO
+
         scale_floor = np.finfo(np.float64).eps * np.maximum(radius, 1.0)
-        for _ in range(ROBUST_REWEIGHTING_STEPS):
+        one_step_normals = normals
+        for refinement_step in range(ROBUST_REWEIGHTING_STEPS):
             residuals = np.einsum("nki,ni->nk", centered, normals, optimize=True)
             residual_median = np.median(residuals, axis=1, keepdims=True)
             robust_scale = MAD_TO_SIGMA * np.median(
@@ -83,7 +93,11 @@ def estimate_normals(
             )
             _, eigenvectors = np.linalg.eigh(covariance)
             normals = eigenvectors[:, :, 0]
+            if refinement_step == 0:
+                one_step_normals = normals
 
-        estimated[start:stop] = normals
+        estimated[start:stop] = np.where(
+            use_second_refinement[:, None], normals, one_step_normals
+        )
 
     return estimated
