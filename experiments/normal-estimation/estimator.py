@@ -10,7 +10,8 @@ import numpy as np
 
 NEIGHBOR_COUNT = 112
 FINAL_NEIGHBOR_COUNT = 128
-FINAL_STATISTIC_COUNT = 32
+FINAL_LOCATION_COUNT = 24
+FINAL_SCALE_COUNT = 32
 INITIAL_NEIGHBOR_COUNT = 224
 DISTANCE_DECAY = 2.0
 TUKEY_CUTOFFS = (4.62, 2.77)
@@ -39,8 +40,8 @@ def estimate_normals(
 
     A 224-neighbor Gaussian tail stabilizes the provisional tangent under
     positional noise. Two Tukey-biweight IRLS steps refine that normal; the
-    final 128-point covariance uses robust location and scale from its nearest
-    32 samples so curved tail points cannot define their own leverage.
+    final 128-point covariance uses robust location from its nearest 24
+    samples and robust scale from 32, separating query locality from stability.
     """
     del query_indices
     if neighbor_indices.shape[1] < INITIAL_NEIGHBOR_COUNT:
@@ -80,20 +81,27 @@ def estimate_normals(
 
         scale_floor = np.finfo(np.float64).eps * np.maximum(bandwidth, 1.0)
         refinement_counts = (NEIGHBOR_COUNT, FINAL_NEIGHBOR_COUNT)
-        statistic_counts = (NEIGHBOR_COUNT, FINAL_STATISTIC_COUNT)
-        for tukey_cutoff, refinement_count, statistic_count in zip(
-            TUKEY_CUTOFFS, refinement_counts, statistic_counts, strict=True
+        location_counts = (NEIGHBOR_COUNT, FINAL_LOCATION_COUNT)
+        scale_counts = (NEIGHBOR_COUNT, FINAL_SCALE_COUNT)
+        for tukey_cutoff, refinement_count, location_count, scale_count in zip(
+            TUKEY_CUTOFFS,
+            refinement_counts,
+            location_counts,
+            scale_counts,
+            strict=True,
         ):
             neighborhoods = initial_neighborhoods[:, :refinement_count]
             distance_weights = initial_weights[:, :refinement_count].copy()
             distance_weights /= distance_weights.sum(axis=1, keepdims=True)
             centered = neighborhoods - centroid[:, None, :]
             residuals = np.einsum("nki,ni->nk", centered, normals, optimize=True)
-            statistic_residuals = residuals[:, :statistic_count]
-            statistic_weights = distance_weights[:, :statistic_count]
-            residual_median = _weighted_median(statistic_residuals, statistic_weights)
+            location_residuals = residuals[:, :location_count]
+            location_weights = distance_weights[:, :location_count]
+            residual_median = _weighted_median(location_residuals, location_weights)
+            scale_residuals = residuals[:, :scale_count]
+            scale_weights = distance_weights[:, :scale_count]
             robust_scale = MAD_TO_SIGMA * _weighted_median(
-                np.abs(statistic_residuals - residual_median), statistic_weights
+                np.abs(scale_residuals - residual_median), scale_weights
             )
             robust_scale = np.maximum(robust_scale, scale_floor)
             normalized = (residuals - residual_median) / (tukey_cutoff * robust_scale)
