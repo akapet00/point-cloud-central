@@ -12,6 +12,7 @@ NEIGHBOR_COUNT = 112
 INITIAL_NEIGHBOR_COUNT = 224
 DISTANCE_DECAY = 2.0
 ROBUST_CUTOFFS = (2.5, 1.5)
+BROAD_NORMAL_BLEND = 0.1
 MAD_TO_SIGMA = 1.4826
 BATCH_SIZE = 2_048
 
@@ -74,6 +75,7 @@ def estimate_normals(
         )
         _, eigenvectors = np.linalg.eigh(covariance)
         normals = eigenvectors[:, :, 0]
+        broad_normals = normals.copy()
 
         neighborhoods = initial_neighborhoods[:, :NEIGHBOR_COUNT]
         distance_weights = initial_weights[:, :NEIGHBOR_COUNT]
@@ -100,6 +102,19 @@ def estimate_normals(
             _, eigenvectors = np.linalg.eigh(covariance)
             normals = eigenvectors[:, :, 0]
 
-        estimated[start:stop] = normals
+        alignment = np.einsum("ni,ni->n", normals, broad_normals, optimize=True)
+        broad_normals = np.where(
+            alignment[:, None] < 0.0, -broad_normals, broad_normals
+        )
+        normals = (1.0 - BROAD_NORMAL_BLEND) * normals + (
+            BROAD_NORMAL_BLEND * broad_normals
+        )
+        normal_lengths = np.linalg.norm(normals, axis=1, keepdims=True)
+        estimated[start:stop] = np.divide(
+            normals,
+            normal_lengths,
+            out=np.zeros_like(normals),
+            where=normal_lengths > 0.0,
+        )
 
     return estimated
