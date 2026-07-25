@@ -87,7 +87,7 @@ def estimate_normals(
                 np.abs(residuals - residual_median), distance_weights
             )
             robust_scale = np.maximum(robust_scale, scale_floor)
-            normalized = residuals / (robust_cutoff * robust_scale)
+            normalized = (residuals - residual_median) / (robust_cutoff * robust_scale)
             robust_weights = 1.0 / (1.0 + normalized * normalized)
 
             weights = distance_weights * robust_weights
