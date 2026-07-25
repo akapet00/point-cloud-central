@@ -16,6 +16,7 @@ INITIAL_NEIGHBOR_COUNT = 224
 DISTANCE_DECAY = 2.0
 TUKEY_CUTOFFS = (4.15, 2.77, 2.77)
 THIRD_REFINEMENT_MAX_THICKNESS = 0.1
+THIRD_GAUSSIAN_WEIGHT_MIX = 0.05
 MAD_TO_SIGMA = 1.4826
 BATCH_SIZE = 2_048
 
@@ -42,7 +43,8 @@ def estimate_normals(
     A 224-neighbor Gaussian tail stabilizes the provisional tangent under
     positional noise. Two Tukey-biweight IRLS steps refine that normal using
     query-local residual statistics. A third step is accepted only for a thin
-    local sheet, where another redescending fit is unlikely to reject noise.
+    local sheet, with a small Gaussian-weight floor to preserve covariance
+    support when redescending rejection would otherwise discard a sample.
     """
     del query_indices
     if neighbor_indices.shape[1] < INITIAL_NEIGHBOR_COUNT:
@@ -109,6 +111,10 @@ def estimate_normals(
             normalized = (residuals - residual_median) / (tukey_cutoff * robust_scale)
             inside = normalized * normalized < 1.0
             robust_weights = np.square(1.0 - normalized * normalized) * inside
+            if step == 2:
+                robust_weights = (
+                    1.0 - THIRD_GAUSSIAN_WEIGHT_MIX
+                ) * robust_weights + THIRD_GAUSSIAN_WEIGHT_MIX
 
             weights = distance_weights * robust_weights
             weights /= weights.sum(axis=1, keepdims=True)
