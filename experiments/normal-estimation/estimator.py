@@ -9,6 +9,7 @@ from __future__ import annotations
 import numpy as np
 
 NEIGHBOR_COUNT = 112
+REFINEMENT_BANDWIDTH_COUNT = 96
 INITIAL_NEIGHBOR_COUNT = 224
 DISTANCE_DECAY = 2.0
 ROBUST_CUTOFFS = (2.5, 1.5)
@@ -36,8 +37,9 @@ def estimate_normals(
     """Estimate normals from broad initialization and local robust PCA.
 
     A 224-neighbor Gaussian tail stabilizes the provisional tangent under
-    positional noise. Two Cauchy IRLS steps then refine that normal using only
-    the query-local 112-neighbor patch, limiting broad-neighborhood bias.
+    positional noise. Two Cauchy IRLS steps then refine that normal on 112
+    neighbors with a 96th-neighbor Gaussian bandwidth, retaining a low-weight
+    support tail while reducing broad-neighborhood bias.
     """
     del query_indices
     if neighbor_indices.shape[1] < INITIAL_NEIGHBOR_COUNT:
@@ -76,10 +78,20 @@ def estimate_normals(
         normals = eigenvectors[:, :, 0]
 
         neighborhoods = initial_neighborhoods[:, :NEIGHBOR_COUNT]
-        distance_weights = initial_weights[:, :NEIGHBOR_COUNT]
+        local_distances = initial_distances[:, :NEIGHBOR_COUNT]
+        refinement_bandwidth = initial_distances[
+            :, REFINEMENT_BANDWIDTH_COUNT - 1 : REFINEMENT_BANDWIDTH_COUNT
+        ]
+        local_scaled_squared = np.divide(
+            local_distances * local_distances,
+            refinement_bandwidth * refinement_bandwidth,
+            out=np.zeros_like(local_distances, dtype=np.float64),
+            where=refinement_bandwidth > 0.0,
+        )
+        distance_weights = np.exp(-DISTANCE_DECAY * local_scaled_squared)
         distance_weights /= distance_weights.sum(axis=1, keepdims=True)
         centered = neighborhoods - centroid[:, None, :]
-        scale_floor = np.finfo(np.float64).eps * np.maximum(bandwidth, 1.0)
+        scale_floor = np.finfo(np.float64).eps * np.maximum(refinement_bandwidth, 1.0)
         for robust_cutoff in ROBUST_CUTOFFS:
             residuals = np.einsum("nki,ni->nk", centered, normals, optimize=True)
             residual_median = _weighted_median(residuals, distance_weights)
