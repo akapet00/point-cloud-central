@@ -9,7 +9,7 @@ from __future__ import annotations
 import numpy as np
 
 NEIGHBOR_COUNT = 112
-DISTANCE_DECAY = 2.0
+DISTANCE_DECAY = 3.0
 BATCH_SIZE = 2_048
 
 
