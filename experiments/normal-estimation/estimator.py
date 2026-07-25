@@ -16,6 +16,7 @@ INITIAL_NEIGHBOR_COUNT = 224
 DISTANCE_DECAY = 2.0
 TUKEY_CUTOFFS = (4.15, 2.77, 2.77)
 THIRD_REFINEMENT_MAX_THICKNESS = 0.1
+THIRD_STATISTIC_BANDWIDTH_COUNT = 116
 MAD_TO_SIGMA = 1.4826
 BATCH_SIZE = 2_048
 
@@ -101,6 +102,16 @@ def estimate_normals(
             residuals = np.einsum("nki,ni->nk", centered, normals, optimize=True)
             statistic_residuals = residuals[:, :statistic_count]
             statistic_weights = distance_weights[:, :statistic_count]
+            if step == 2 and THIRD_STATISTIC_BANDWIDTH_COUNT != NEIGHBOR_COUNT:
+                statistic_bandwidth = initial_distances[
+                    :,
+                    THIRD_STATISTIC_BANDWIDTH_COUNT
+                    - 1 : THIRD_STATISTIC_BANDWIDTH_COUNT,
+                ]
+                statistic_distances = initial_distances[:, :statistic_count]
+                statistic_scaled_squared = statistic_distances * statistic_distances
+                statistic_scaled_squared /= statistic_bandwidth * statistic_bandwidth
+                statistic_weights = np.exp(-DISTANCE_DECAY * statistic_scaled_squared)
             residual_median = _weighted_median(statistic_residuals, statistic_weights)
             robust_scale = MAD_TO_SIGMA * _weighted_median(
                 np.abs(statistic_residuals - residual_median), statistic_weights
