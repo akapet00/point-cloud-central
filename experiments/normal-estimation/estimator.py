@@ -22,14 +22,13 @@ def estimate_normals(
     neighbor_indices: np.ndarray,
     neighbor_distances: np.ndarray,
 ) -> np.ndarray:
-    """Estimate unoriented normals with two-step robust weighted PCA.
+    """Estimate unoriented normals with query-anchored robust weighted PCA.
 
-    An initial Gaussian distance-weighted fit supplies a provisional tangent
-    plane. Two Cauchy IRLS steps then limit the covariance leverage of points
-    with large normalized point-to-plane residuals, refining the residuals once
-    from the first robust plane before producing the final normal.
+    Each fitted plane is constrained to pass through the query, so its normal
+    minimizes weighted squared query-relative heights rather than heights about
+    a neighborhood centroid. Two Cauchy IRLS steps retain bounded residual
+    leverage while refining that query-local tangent plane.
     """
-    del query_indices
     if neighbor_indices.shape[1] < NEIGHBOR_COUNT:
         msg = f"At least {NEIGHBOR_COUNT} cached neighbors are required"
         raise ValueError(msg)
@@ -38,6 +37,8 @@ def estimate_normals(
     for start in range(0, neighbor_indices.shape[0], BATCH_SIZE):
         stop = min(start + BATCH_SIZE, neighbor_indices.shape[0])
         neighborhoods = points[neighbor_indices[start:stop, :NEIGHBOR_COUNT]]
+        queries = points[query_indices[start:stop]]
+        offsets = neighborhoods - queries[:, None, :]
         distances = neighbor_distances[start:stop, :NEIGHBOR_COUNT]
         radius = distances[:, -1:]
         scaled_squared = np.divide(
@@ -49,15 +50,11 @@ def estimate_normals(
         distance_weights = np.exp(-DISTANCE_DECAY * scaled_squared)
         distance_weights /= distance_weights.sum(axis=1, keepdims=True)
 
-        centroid = np.einsum(
-            "nk,nki->ni", distance_weights, neighborhoods, optimize=True
-        )
-        centered = neighborhoods - centroid[:, None, :]
         covariance = np.einsum(
             "nk,nki,nkj->nij",
             distance_weights,
-            centered,
-            centered,
+            offsets,
+            offsets,
             optimize=True,
         )
         _, eigenvectors = np.linalg.eigh(covariance)
@@ -65,7 +62,7 @@ def estimate_normals(
 
         scale_floor = np.finfo(np.float64).eps * np.maximum(radius, 1.0)
         for _ in range(ROBUST_REWEIGHTING_STEPS):
-            residuals = np.einsum("nki,ni->nk", centered, normals, optimize=True)
+            residuals = np.einsum("nki,ni->nk", offsets, normals, optimize=True)
             residual_median = np.median(residuals, axis=1, keepdims=True)
             robust_scale = MAD_TO_SIGMA * np.median(
                 np.abs(residuals - residual_median), axis=1, keepdims=True
@@ -76,10 +73,8 @@ def estimate_normals(
 
             weights = distance_weights * robust_weights
             weights /= weights.sum(axis=1, keepdims=True)
-            centroid = np.einsum("nk,nki->ni", weights, neighborhoods, optimize=True)
-            centered = neighborhoods - centroid[:, None, :]
             covariance = np.einsum(
-                "nk,nki,nkj->nij", weights, centered, centered, optimize=True
+                "nk,nki,nkj->nij", weights, offsets, offsets, optimize=True
             )
             _, eigenvectors = np.linalg.eigh(covariance)
             normals = eigenvectors[:, :, 0]
