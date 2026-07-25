@@ -36,8 +36,8 @@ def estimate_normals(
     """Estimate normals from broad initialization and local robust PCA.
 
     A 224-neighbor Gaussian tail stabilizes the provisional tangent under
-    positional noise. Two Cauchy IRLS steps then refine that normal using only
-    the query-local 112-neighbor patch, limiting broad-neighborhood bias.
+    positional noise. Two Cauchy IRLS steps refine it on 112 neighbors; the
+    final step uses the corrected frame to adapt to elongated surface support.
     """
     del query_indices
     if neighbor_indices.shape[1] < INITIAL_NEIGHBOR_COUNT:
@@ -72,7 +72,7 @@ def estimate_normals(
             initial_centered,
             optimize=True,
         )
-        _, eigenvectors = np.linalg.eigh(covariance)
+        eigenvalues, eigenvectors = np.linalg.eigh(covariance)
         normals = eigenvectors[:, :, 0]
 
         neighborhoods = initial_neighborhoods[:, :NEIGHBOR_COUNT]
@@ -80,7 +80,31 @@ def estimate_normals(
         distance_weights /= distance_weights.sum(axis=1, keepdims=True)
         centered = neighborhoods - centroid[:, None, :]
         scale_floor = np.finfo(np.float64).eps * np.maximum(bandwidth, 1.0)
-        for robust_cutoff in ROBUST_CUTOFFS:
+        for refinement_index, robust_cutoff in enumerate(ROBUST_CUTOFFS):
+            if refinement_index == 1:
+                coordinates = np.einsum(
+                    "nki,nij->nkj", centered, eigenvectors, optimize=True
+                )
+                variance_floor = np.finfo(np.float64).eps * np.maximum(
+                    eigenvalues[:, 2:3], 1.0
+                )
+                tangent_variances = np.maximum(eigenvalues[:, 1:3], variance_floor)
+                tangent_scale = np.sqrt(
+                    tangent_variances[:, 0:1] * tangent_variances[:, 1:2]
+                )
+                anisotropic_squared = coordinates[:, :, 0] ** 2 + tangent_scale * (
+                    coordinates[:, :, 1] ** 2 / tangent_variances[:, 0:1]
+                    + coordinates[:, :, 2] ** 2 / tangent_variances[:, 1:2]
+                )
+                scaled_squared = np.divide(
+                    anisotropic_squared,
+                    bandwidth * bandwidth,
+                    out=np.zeros_like(anisotropic_squared),
+                    where=bandwidth > 0.0,
+                )
+                distance_weights = np.exp(-DISTANCE_DECAY * scaled_squared)
+                distance_weights /= distance_weights.sum(axis=1, keepdims=True)
+
             residuals = np.einsum("nki,ni->nk", centered, normals, optimize=True)
             residual_median = _weighted_median(residuals, distance_weights)
             robust_scale = MAD_TO_SIGMA * _weighted_median(
@@ -97,7 +121,7 @@ def estimate_normals(
             covariance = np.einsum(
                 "nk,nki,nkj->nij", weights, centered, centered, optimize=True
             )
-            _, eigenvectors = np.linalg.eigh(covariance)
+            eigenvalues, eigenvectors = np.linalg.eigh(covariance)
             normals = eigenvectors[:, :, 0]
 
         estimated[start:stop] = normals
