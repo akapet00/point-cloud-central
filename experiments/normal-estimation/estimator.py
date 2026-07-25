@@ -12,6 +12,7 @@ NEIGHBOR_COUNT = 112
 INITIAL_NEIGHBOR_COUNT = 224
 DISTANCE_DECAY = 2.0
 TUKEY_CUTOFFS = (4.62, 2.77)
+MAX_BROAD_BLEND = 0.10
 MAD_TO_SIGMA = 1.4826
 BATCH_SIZE = 2_048
 
@@ -37,8 +38,9 @@ def estimate_normals(
 
     A 224-neighbor Gaussian tail stabilizes the provisional tangent under
     positional noise. Two Tukey-biweight IRLS steps then refine that normal
-    using only the query-local 112-neighbor patch, limiting broad-neighborhood
-    bias and rejecting extreme point-to-plane residuals.
+    using only the query-local 112-neighbor patch. A final confidence-weighted
+    blend borrows broad-scale stability only when the local normal is ambiguous
+    and the two scales agree.
     """
     del query_indices
     if neighbor_indices.shape[1] < INITIAL_NEIGHBOR_COUNT:
@@ -75,6 +77,7 @@ def estimate_normals(
         )
         _, eigenvectors = np.linalg.eigh(covariance)
         normals = eigenvectors[:, :, 0]
+        broad_normals = normals.copy()
 
         neighborhoods = initial_neighborhoods[:, :NEIGHBOR_COUNT]
         distance_weights = initial_weights[:, :NEIGHBOR_COUNT]
@@ -99,8 +102,24 @@ def estimate_normals(
             covariance = np.einsum(
                 "nk,nki,nkj->nij", weights, centered, centered, optimize=True
             )
-            _, eigenvectors = np.linalg.eigh(covariance)
+            eigenvalues, eigenvectors = np.linalg.eigh(covariance)
             normals = eigenvectors[:, :, 0]
+
+        agreement = np.einsum("ni,ni->n", normals, broad_normals, optimize=True)
+        aligned_broad = np.where(
+            agreement[:, None] < 0.0, -broad_normals, broad_normals
+        )
+        agreement = np.abs(agreement)
+        ambiguity = np.divide(
+            eigenvalues[:, 0],
+            eigenvalues[:, 1],
+            out=np.zeros_like(eigenvalues[:, 0]),
+            where=eigenvalues[:, 1] > 0.0,
+        )
+        blend = MAX_BROAD_BLEND * np.clip(ambiguity, 0.0, 1.0) * agreement**2
+        normals = (1.0 - blend[:, None]) * normals + blend[:, None] * aligned_broad
+        lengths = np.linalg.norm(normals, axis=1, keepdims=True)
+        normals /= np.maximum(lengths, np.finfo(np.float64).tiny)
 
         estimated[start:stop] = normals
 
