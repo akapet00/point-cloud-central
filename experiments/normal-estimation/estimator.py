@@ -13,6 +13,8 @@ INITIAL_NEIGHBOR_COUNT = 224
 DISTANCE_DECAY = 2.0
 TUKEY_CUTOFFS = (4.62, 2.77)
 MAD_TO_SIGMA = 1.4826
+NORMAL_AMBIGUITY_THRESHOLD = 0.5
+BROAD_NORMAL_BLEND = 0.1
 BATCH_SIZE = 2_048
 
 
@@ -37,8 +39,8 @@ def estimate_normals(
 
     A 224-neighbor Gaussian tail stabilizes the provisional tangent under
     positional noise. Two Tukey-biweight IRLS steps then refine that normal
-    using only the query-local 112-neighbor patch, limiting broad-neighborhood
-    bias and rejecting extreme point-to-plane residuals.
+    using only the query-local 112-neighbor patch. Only an ambiguous final
+    eigengap triggers a small shrinkage back toward the broad normal.
     """
     del query_indices
     if neighbor_indices.shape[1] < INITIAL_NEIGHBOR_COUNT:
@@ -75,6 +77,7 @@ def estimate_normals(
         )
         _, eigenvectors = np.linalg.eigh(covariance)
         normals = eigenvectors[:, :, 0]
+        broad_normals = normals.copy()
 
         neighborhoods = initial_neighborhoods[:, :NEIGHBOR_COUNT]
         distance_weights = initial_weights[:, :NEIGHBOR_COUNT]
@@ -99,9 +102,20 @@ def estimate_normals(
             covariance = np.einsum(
                 "nk,nki,nkj->nij", weights, centered, centered, optimize=True
             )
-            _, eigenvectors = np.linalg.eigh(covariance)
+            eigenvalues, eigenvectors = np.linalg.eigh(covariance)
             normals = eigenvectors[:, :, 0]
 
+        ambiguity = np.divide(
+            eigenvalues[:, 0],
+            eigenvalues[:, 1],
+            out=np.zeros_like(eigenvalues[:, 0]),
+            where=eigenvalues[:, 1] > 0.0,
+        )
+        alignment = np.einsum("ni,ni->n", normals, broad_normals, optimize=True)
+        aligned_broad = broad_normals * np.where(alignment < 0.0, -1.0, 1.0)[:, None]
+        blend = BROAD_NORMAL_BLEND * (ambiguity >= NORMAL_AMBIGUITY_THRESHOLD)
+        normals = (1.0 - blend[:, None]) * normals + blend[:, None] * aligned_broad
+        normals /= np.linalg.norm(normals, axis=1, keepdims=True)
         estimated[start:stop] = normals
 
     return estimated
