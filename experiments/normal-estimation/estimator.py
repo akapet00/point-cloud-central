@@ -9,7 +9,7 @@ from __future__ import annotations
 import numpy as np
 
 NEIGHBOR_COUNT = 112
-REFINEMENT_NEIGHBOR_COUNT = 160
+REFINEMENT_NEIGHBOR_COUNT = 152
 INITIAL_NEIGHBOR_COUNT = 224
 DISTANCE_DECAY = 2.0
 ROBUST_CUTOFFS = (2.5, 1.5)
@@ -38,7 +38,7 @@ def estimate_normals(
 
     A 224-neighbor Gaussian tail stabilizes the provisional tangent under
     positional noise. Cauchy IRLS first corrects it on 112 neighbors, then the
-    corrected plane admits a 160-neighbor Gaussian tail for the final fit.
+    corrected plane admits a 152-neighbor Gaussian tail for the final fit.
     """
     del query_indices
     if neighbor_indices.shape[1] < INITIAL_NEIGHBOR_COUNT:
