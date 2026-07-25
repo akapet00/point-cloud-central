@@ -11,6 +11,7 @@ import numpy as np
 NEIGHBOR_COUNT = 112
 FIRST_STATISTIC_COUNT = 64
 FINAL_NEIGHBOR_COUNT = 128
+THIRD_REFINEMENT_COUNT = 120
 FINAL_STATISTIC_COUNT = 32
 INITIAL_NEIGHBOR_COUNT = 224
 DISTANCE_DECAY = 2.0
@@ -84,7 +85,7 @@ def estimate_normals(
         refinement_counts = (
             NEIGHBOR_COUNT,
             FINAL_NEIGHBOR_COUNT,
-            FINAL_NEIGHBOR_COUNT,
+            THIRD_REFINEMENT_COUNT,
         )
         statistic_counts = (
             FIRST_STATISTIC_COUNT,
