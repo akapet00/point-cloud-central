@@ -22,14 +22,13 @@ def estimate_normals(
     neighbor_indices: np.ndarray,
     neighbor_distances: np.ndarray,
 ) -> np.ndarray:
-    """Estimate unoriented normals with two-step robust weighted PCA.
+    """Estimate normals with a tangent-domain kernel and robust weighted PCA.
 
-    An initial Gaussian distance-weighted fit supplies a provisional tangent
-    plane. Two Cauchy IRLS steps then limit the covariance leverage of points
-    with large normalized point-to-plane residuals, refining the residuals once
-    from the first robust plane before producing the final normal.
+    An initial Euclidean Gaussian fit supplies a provisional tangent plane.
+    Its normal projects neighbor offsets into that tangent plane, so the two
+    Cauchy IRLS refinements weight lateral proximity independently of normal-
+    direction displacement caused by positional noise.
     """
-    del query_indices
     if neighbor_indices.shape[1] < NEIGHBOR_COUNT:
         msg = f"At least {NEIGHBOR_COUNT} cached neighbors are required"
         raise ValueError(msg)
@@ -62,6 +61,22 @@ def estimate_normals(
         )
         _, eigenvectors = np.linalg.eigh(covariance)
         normals = eigenvectors[:, :, 0]
+
+        query_offsets = neighborhoods - points[query_indices[start:stop], None, :]
+        normal_offsets = np.einsum("nki,ni->nk", query_offsets, normals, optimize=True)
+        tangent_squared = (
+            np.einsum("nki,nki->nk", query_offsets, query_offsets, optimize=True)
+            - normal_offsets * normal_offsets
+        )
+        tangent_squared = np.maximum(tangent_squared, 0.0)
+        tangent_scaled_squared = np.divide(
+            tangent_squared,
+            radius * radius,
+            out=np.zeros_like(tangent_squared),
+            where=radius > 0.0,
+        )
+        distance_weights = np.exp(-DISTANCE_DECAY * tangent_scaled_squared)
+        distance_weights /= distance_weights.sum(axis=1, keepdims=True)
 
         scale_floor = np.finfo(np.float64).eps * np.maximum(radius, 1.0)
         for _ in range(ROBUST_REWEIGHTING_STEPS):
