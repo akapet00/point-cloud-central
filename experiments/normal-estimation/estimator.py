@@ -8,7 +8,8 @@ from __future__ import annotations
 
 import numpy as np
 
-NEIGHBOR_COUNT = 112
+LOCAL_NEIGHBOR_COUNT = 112
+INITIAL_SUPPORT_COUNT = 160
 DISTANCE_DECAY = 2.0
 ROBUST_CUTOFF = 2.5
 ROBUST_REWEIGHTING_STEPS = 2
@@ -22,40 +23,44 @@ def estimate_normals(
     neighbor_indices: np.ndarray,
     neighbor_distances: np.ndarray,
 ) -> np.ndarray:
-    """Estimate unoriented normals with two-step robust weighted PCA.
+    """Estimate unoriented normals with broad initialization and local IRLS.
 
-    An initial Gaussian distance-weighted fit supplies a provisional tangent
-    plane. Two Cauchy IRLS steps then limit the covariance leverage of points
-    with large normalized point-to-plane residuals, refining the residuals once
-    from the first robust plane before producing the final normal.
+    A 160-neighbor Gaussian tail stabilizes only the provisional tangent plane,
+    while its bandwidth remains the 112th-neighbor distance. Two Cauchy IRLS
+    steps then fit only the local 112-neighbor patch, limiting the final
+    estimator's exposure to curvature and neighborhood bias.
     """
     del query_indices
-    if neighbor_indices.shape[1] < NEIGHBOR_COUNT:
-        msg = f"At least {NEIGHBOR_COUNT} cached neighbors are required"
+    if neighbor_indices.shape[1] < INITIAL_SUPPORT_COUNT:
+        msg = f"At least {INITIAL_SUPPORT_COUNT} cached neighbors are required"
         raise ValueError(msg)
 
     estimated = np.empty((neighbor_indices.shape[0], 3), dtype=np.float64)
     for start in range(0, neighbor_indices.shape[0], BATCH_SIZE):
         stop = min(start + BATCH_SIZE, neighbor_indices.shape[0])
-        neighborhoods = points[neighbor_indices[start:stop, :NEIGHBOR_COUNT]]
-        distances = neighbor_distances[start:stop, :NEIGHBOR_COUNT]
-        radius = distances[:, -1:]
+        initial_neighborhoods = points[
+            neighbor_indices[start:stop, :INITIAL_SUPPORT_COUNT]
+        ]
+        initial_distances = neighbor_distances[start:stop, :INITIAL_SUPPORT_COUNT]
+        bandwidth = initial_distances[
+            :, LOCAL_NEIGHBOR_COUNT - 1 : LOCAL_NEIGHBOR_COUNT
+        ]
         scaled_squared = np.divide(
-            distances * distances,
-            radius * radius,
-            out=np.zeros_like(distances, dtype=np.float64),
-            where=radius > 0.0,
+            initial_distances * initial_distances,
+            bandwidth * bandwidth,
+            out=np.zeros_like(initial_distances, dtype=np.float64),
+            where=bandwidth > 0.0,
         )
-        distance_weights = np.exp(-DISTANCE_DECAY * scaled_squared)
-        distance_weights /= distance_weights.sum(axis=1, keepdims=True)
+        spatial_kernel = np.exp(-DISTANCE_DECAY * scaled_squared)
+        initial_weights = spatial_kernel / spatial_kernel.sum(axis=1, keepdims=True)
 
         centroid = np.einsum(
-            "nk,nki->ni", distance_weights, neighborhoods, optimize=True
+            "nk,nki->ni", initial_weights, initial_neighborhoods, optimize=True
         )
-        centered = neighborhoods - centroid[:, None, :]
+        centered = initial_neighborhoods - centroid[:, None, :]
         covariance = np.einsum(
             "nk,nki,nkj->nij",
-            distance_weights,
+            initial_weights,
             centered,
             centered,
             optimize=True,
@@ -63,7 +68,12 @@ def estimate_normals(
         _, eigenvectors = np.linalg.eigh(covariance)
         normals = eigenvectors[:, :, 0]
 
-        scale_floor = np.finfo(np.float64).eps * np.maximum(radius, 1.0)
+        neighborhoods = initial_neighborhoods[:, :LOCAL_NEIGHBOR_COUNT]
+        distance_weights = spatial_kernel[:, :LOCAL_NEIGHBOR_COUNT].copy()
+        distance_weights /= distance_weights.sum(axis=1, keepdims=True)
+        centered = neighborhoods - centroid[:, None, :]
+        scale_floor = np.finfo(np.float64).eps * np.maximum(bandwidth, 1.0)
+
         for _ in range(ROBUST_REWEIGHTING_STEPS):
             residuals = np.einsum("nki,ni->nk", centered, normals, optimize=True)
             residual_median = np.median(residuals, axis=1, keepdims=True)
