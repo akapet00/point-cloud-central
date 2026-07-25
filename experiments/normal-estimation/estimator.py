@@ -25,9 +25,9 @@ def estimate_normals(
     """Estimate unoriented normals with two-step robust weighted PCA.
 
     An initial Gaussian distance-weighted fit supplies a provisional tangent
-    plane. Two Cauchy IRLS steps then limit the covariance leverage of points
-    with large normalized point-to-plane residuals, refining the residuals once
-    from the first robust plane before producing the final normal.
+    plane and a robust MAD residual scale. Two Cauchy IRLS steps then update the
+    plane while holding that scale fixed, avoiding progressively stronger
+    rejection caused solely by scale contraction.
     """
     del query_indices
     if neighbor_indices.shape[1] < NEIGHBOR_COUNT:
@@ -63,14 +63,16 @@ def estimate_normals(
         _, eigenvectors = np.linalg.eigh(covariance)
         normals = eigenvectors[:, :, 0]
 
+        initial_residuals = np.einsum("nki,ni->nk", centered, normals, optimize=True)
+        residual_median = np.median(initial_residuals, axis=1, keepdims=True)
+        robust_scale = MAD_TO_SIGMA * np.median(
+            np.abs(initial_residuals - residual_median), axis=1, keepdims=True
+        )
         scale_floor = np.finfo(np.float64).eps * np.maximum(radius, 1.0)
+        robust_scale = np.maximum(robust_scale, scale_floor)
+
         for _ in range(ROBUST_REWEIGHTING_STEPS):
             residuals = np.einsum("nki,ni->nk", centered, normals, optimize=True)
-            residual_median = np.median(residuals, axis=1, keepdims=True)
-            robust_scale = MAD_TO_SIGMA * np.median(
-                np.abs(residuals - residual_median), axis=1, keepdims=True
-            )
-            robust_scale = np.maximum(robust_scale, scale_floor)
             normalized = residuals / (ROBUST_CUTOFF * robust_scale)
             robust_weights = 1.0 / (1.0 + normalized * normalized)
 
