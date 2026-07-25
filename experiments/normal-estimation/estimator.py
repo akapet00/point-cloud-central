@@ -11,7 +11,8 @@ import numpy as np
 NEIGHBOR_COUNT = 112
 INITIAL_NEIGHBOR_COUNT = 224
 DISTANCE_DECAY = 2.0
-TUKEY_CUTOFFS = (4.62, 2.77)
+CAUCHY_CUTOFF = 2.5
+TUKEY_CUTOFF = 2.77
 MAD_TO_SIGMA = 1.4826
 BATCH_SIZE = 2_048
 
@@ -36,9 +37,9 @@ def estimate_normals(
     """Estimate normals from broad initialization and local robust PCA.
 
     A 224-neighbor Gaussian tail stabilizes the provisional tangent under
-    positional noise. Two Tukey-biweight IRLS steps then refine that normal
-    using only the query-local 112-neighbor patch, limiting broad-neighborhood
-    bias and rejecting extreme point-to-plane residuals.
+    positional noise. A bounded-influence Cauchy step corrects that broad fit
+    without discarding noisy samples, then a local Tukey-biweight step rejects
+    extreme residuals from the corrected 112-neighbor tangent.
     """
     del query_indices
     if neighbor_indices.shape[1] < INITIAL_NEIGHBOR_COUNT:
@@ -81,16 +82,21 @@ def estimate_normals(
         distance_weights /= distance_weights.sum(axis=1, keepdims=True)
         centered = neighborhoods - centroid[:, None, :]
         scale_floor = np.finfo(np.float64).eps * np.maximum(bandwidth, 1.0)
-        for tukey_cutoff in TUKEY_CUTOFFS:
+        for refinement_index in range(2):
             residuals = np.einsum("nki,ni->nk", centered, normals, optimize=True)
             residual_median = _weighted_median(residuals, distance_weights)
             robust_scale = MAD_TO_SIGMA * _weighted_median(
                 np.abs(residuals - residual_median), distance_weights
             )
             robust_scale = np.maximum(robust_scale, scale_floor)
-            normalized = (residuals - residual_median) / (tukey_cutoff * robust_scale)
-            inside = normalized * normalized < 1.0
-            robust_weights = np.square(1.0 - normalized * normalized) * inside
+            centered_residuals = residuals - residual_median
+            if refinement_index == 0:
+                normalized = centered_residuals / (CAUCHY_CUTOFF * robust_scale)
+                robust_weights = 1.0 / (1.0 + normalized * normalized)
+            else:
+                normalized = centered_residuals / (TUKEY_CUTOFF * robust_scale)
+                inside = normalized * normalized < 1.0
+                robust_weights = np.square(1.0 - normalized * normalized) * inside
 
             weights = distance_weights * robust_weights
             weights /= weights.sum(axis=1, keepdims=True)
