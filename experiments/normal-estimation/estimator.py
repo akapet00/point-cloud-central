@@ -9,6 +9,7 @@ from __future__ import annotations
 import numpy as np
 
 NEIGHBOR_COUNT = 112
+FINAL_NEIGHBOR_COUNT = 160
 INITIAL_NEIGHBOR_COUNT = 224
 DISTANCE_DECAY = 2.0
 TUKEY_CUTOFFS = (4.62, 2.77)
@@ -36,9 +37,9 @@ def estimate_normals(
     """Estimate normals from broad initialization and local robust PCA.
 
     A 224-neighbor Gaussian tail stabilizes the provisional tangent under
-    positional noise. Two Tukey-biweight IRLS steps then refine that normal
-    using only the query-local 112-neighbor patch, limiting broad-neighborhood
-    bias and rejecting extreme point-to-plane residuals.
+    positional noise. A 112-neighbor Tukey fit first corrects that plane, then
+    a 160-neighbor Tukey fit adds a decaying tail for noise averaging while
+    rejecting extreme point-to-plane residuals.
     """
     del query_indices
     if neighbor_indices.shape[1] < INITIAL_NEIGHBOR_COUNT:
@@ -76,12 +77,15 @@ def estimate_normals(
         _, eigenvectors = np.linalg.eigh(covariance)
         normals = eigenvectors[:, :, 0]
 
-        neighborhoods = initial_neighborhoods[:, :NEIGHBOR_COUNT]
-        distance_weights = initial_weights[:, :NEIGHBOR_COUNT]
-        distance_weights /= distance_weights.sum(axis=1, keepdims=True)
-        centered = neighborhoods - centroid[:, None, :]
         scale_floor = np.finfo(np.float64).eps * np.maximum(bandwidth, 1.0)
-        for tukey_cutoff in TUKEY_CUTOFFS:
+        refinement_counts = (NEIGHBOR_COUNT, FINAL_NEIGHBOR_COUNT)
+        for tukey_cutoff, refinement_count in zip(
+            TUKEY_CUTOFFS, refinement_counts, strict=True
+        ):
+            neighborhoods = initial_neighborhoods[:, :refinement_count]
+            distance_weights = initial_weights[:, :refinement_count].copy()
+            distance_weights /= distance_weights.sum(axis=1, keepdims=True)
+            centered = neighborhoods - centroid[:, None, :]
             residuals = np.einsum("nki,ni->nk", centered, normals, optimize=True)
             residual_median = _weighted_median(residuals, distance_weights)
             robust_scale = MAD_TO_SIGMA * _weighted_median(
