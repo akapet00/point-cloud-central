@@ -16,6 +16,7 @@ INITIAL_NEIGHBOR_COUNT = 224
 DISTANCE_DECAY = 2.0
 TUKEY_CUTOFFS = (4.15, 2.77, 2.77)
 THIRD_REFINEMENT_MAX_THICKNESS = 0.1
+THIRD_REFINEMENT_MIN_WEIGHT_MASS = 0.25
 MAD_TO_SIGMA = 1.4826
 BATCH_SIZE = 2_048
 
@@ -111,7 +112,8 @@ def estimate_normals(
             robust_weights = np.square(1.0 - normalized * normalized) * inside
 
             weights = distance_weights * robust_weights
-            weights /= weights.sum(axis=1, keepdims=True)
+            retained_weight_mass = weights.sum(axis=1, keepdims=True)
+            weights /= retained_weight_mass
             centroid = np.einsum("nk,nki->ni", weights, neighborhoods, optimize=True)
             covariance = np.einsum(
                 "nk,nki,nkj->nij",
@@ -124,7 +126,12 @@ def estimate_normals(
             refined_normals = eigenvectors[:, :, 0]
             if step == 2:
                 thin_sheet = robust_scale <= THIRD_REFINEMENT_MAX_THICKNESS * bandwidth
-                normals = np.where(thin_sheet, refined_normals, normals)
+                sufficient_support = (
+                    retained_weight_mass >= THIRD_REFINEMENT_MIN_WEIGHT_MASS
+                )
+                normals = np.where(
+                    thin_sheet & sufficient_support, refined_normals, normals
+                )
             else:
                 normals = refined_normals
 
