@@ -12,6 +12,7 @@ NEIGHBOR_COUNT = 112
 DISTANCE_DECAY = 2.0
 ROBUST_CUTOFF = 2.5
 ROBUST_REWEIGHTING_STEPS = 2
+SURFACE_VARIATION_THRESHOLD = 0.01
 MAD_TO_SIGMA = 1.4826
 BATCH_SIZE = 2_048
 
@@ -25,9 +26,9 @@ def estimate_normals(
     """Estimate unoriented normals with two-step robust weighted PCA.
 
     An initial Gaussian distance-weighted fit supplies a provisional tangent
-    plane. Two Cauchy IRLS steps then limit the covariance leverage of points
-    with large normalized point-to-plane residuals, refining the residuals once
-    from the first robust plane before producing the final normal.
+    plane. One Cauchy IRLS step always limits the covariance leverage of large
+    point-to-plane residuals. A second step is retained only for patches whose
+    initial dimensionless surface variation confidently indicates a plane.
     """
     del query_indices
     if neighbor_indices.shape[1] < NEIGHBOR_COUNT:
@@ -60,11 +61,15 @@ def estimate_normals(
             centered,
             optimize=True,
         )
-        _, eigenvectors = np.linalg.eigh(covariance)
+        eigenvalues, eigenvectors = np.linalg.eigh(covariance)
         normals = eigenvectors[:, :, 0]
+        surface_variation = eigenvalues[:, 0] / np.maximum(
+            eigenvalues.sum(axis=1), np.finfo(np.float64).eps
+        )
+        refine_twice = surface_variation <= SURFACE_VARIATION_THRESHOLD
 
         scale_floor = np.finfo(np.float64).eps * np.maximum(radius, 1.0)
-        for _ in range(ROBUST_REWEIGHTING_STEPS):
+        for step in range(ROBUST_REWEIGHTING_STEPS):
             residuals = np.einsum("nki,ni->nk", centered, normals, optimize=True)
             residual_median = np.median(residuals, axis=1, keepdims=True)
             robust_scale = MAD_TO_SIGMA * np.median(
@@ -82,7 +87,11 @@ def estimate_normals(
                 "nk,nki,nkj->nij", weights, centered, centered, optimize=True
             )
             _, eigenvectors = np.linalg.eigh(covariance)
-            normals = eigenvectors[:, :, 0]
+            refined_normals = eigenvectors[:, :, 0]
+            if step == 0:
+                normals = refined_normals
+            else:
+                normals = np.where(refine_twice[:, None], refined_normals, normals)
 
         estimated[start:stop] = normals
 
