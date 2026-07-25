@@ -9,7 +9,6 @@ from __future__ import annotations
 import numpy as np
 
 NEIGHBOR_COUNT = 112
-REFINEMENT_NEIGHBOR_COUNT = 160
 INITIAL_NEIGHBOR_COUNT = 224
 DISTANCE_DECAY = 2.0
 ROBUST_CUTOFFS = (2.5, 1.5)
@@ -37,8 +36,8 @@ def estimate_normals(
     """Estimate normals from broad initialization and local robust PCA.
 
     A 224-neighbor Gaussian tail stabilizes the provisional tangent under
-    positional noise. Cauchy IRLS first corrects it on 112 neighbors, then the
-    corrected plane admits a 160-neighbor Gaussian tail for the final fit.
+    positional noise. Two Cauchy IRLS steps then refine that normal using only
+    the query-local 112-neighbor patch, limiting broad-neighborhood bias.
     """
     del query_indices
     if neighbor_indices.shape[1] < INITIAL_NEIGHBOR_COUNT:
@@ -76,15 +75,12 @@ def estimate_normals(
         _, eigenvectors = np.linalg.eigh(covariance)
         normals = eigenvectors[:, :, 0]
 
+        neighborhoods = initial_neighborhoods[:, :NEIGHBOR_COUNT]
+        distance_weights = initial_weights[:, :NEIGHBOR_COUNT]
+        distance_weights /= distance_weights.sum(axis=1, keepdims=True)
+        centered = neighborhoods - centroid[:, None, :]
         scale_floor = np.finfo(np.float64).eps * np.maximum(bandwidth, 1.0)
-        refinement_sizes = (NEIGHBOR_COUNT, REFINEMENT_NEIGHBOR_COUNT)
-        for robust_cutoff, refinement_size in zip(
-            ROBUST_CUTOFFS, refinement_sizes, strict=True
-        ):
-            neighborhoods = initial_neighborhoods[:, :refinement_size]
-            distance_weights = initial_weights[:, :refinement_size].copy()
-            distance_weights /= distance_weights.sum(axis=1, keepdims=True)
-            centered = neighborhoods - centroid[:, None, :]
+        for robust_cutoff in ROBUST_CUTOFFS:
             residuals = np.einsum("nki,ni->nk", centered, normals, optimize=True)
             residual_median = _weighted_median(residuals, distance_weights)
             robust_scale = MAD_TO_SIGMA * _weighted_median(
