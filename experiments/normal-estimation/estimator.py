@@ -36,11 +36,11 @@ def estimate_normals(
     """Estimate normals from broad initialization and local robust PCA.
 
     A 224-neighbor Gaussian tail stabilizes the provisional tangent under
-    positional noise. Two Tukey-biweight IRLS steps then refine that normal
-    using only the query-local 112-neighbor patch, limiting broad-neighborhood
-    bias and rejecting extreme point-to-plane residuals.
+    positional noise. The first local Tukey fit leaves out the query sample to
+    avoid anchoring its correction to the query's own positional error; the
+    final fit restores that sample for covariance support. Both refinements
+    reject extreme point-to-plane residuals on the 112-neighbor patch.
     """
-    del query_indices
     if neighbor_indices.shape[1] < INITIAL_NEIGHBOR_COUNT:
         msg = f"At least {INITIAL_NEIGHBOR_COUNT} cached neighbors are required"
         raise ValueError(msg)
@@ -79,20 +79,29 @@ def estimate_normals(
         neighborhoods = initial_neighborhoods[:, :NEIGHBOR_COUNT]
         distance_weights = initial_weights[:, :NEIGHBOR_COUNT]
         distance_weights /= distance_weights.sum(axis=1, keepdims=True)
+        first_pass_weights = distance_weights * (
+            neighbor_indices[start:stop, :NEIGHBOR_COUNT]
+            != query_indices[start:stop, None]
+        )
+        first_pass_weights /= first_pass_weights.sum(axis=1, keepdims=True)
+
         centered = neighborhoods - centroid[:, None, :]
         scale_floor = np.finfo(np.float64).eps * np.maximum(bandwidth, 1.0)
-        for tukey_cutoff in TUKEY_CUTOFFS:
+        for pass_index, tukey_cutoff in enumerate(TUKEY_CUTOFFS):
+            spatial_weights = (
+                first_pass_weights if pass_index == 0 else distance_weights
+            )
             residuals = np.einsum("nki,ni->nk", centered, normals, optimize=True)
-            residual_median = _weighted_median(residuals, distance_weights)
+            residual_median = _weighted_median(residuals, spatial_weights)
             robust_scale = MAD_TO_SIGMA * _weighted_median(
-                np.abs(residuals - residual_median), distance_weights
+                np.abs(residuals - residual_median), spatial_weights
             )
             robust_scale = np.maximum(robust_scale, scale_floor)
             normalized = (residuals - residual_median) / (tukey_cutoff * robust_scale)
             inside = normalized * normalized < 1.0
             robust_weights = np.square(1.0 - normalized * normalized) * inside
 
-            weights = distance_weights * robust_weights
+            weights = spatial_weights * robust_weights
             weights /= weights.sum(axis=1, keepdims=True)
             centroid = np.einsum("nk,nki->ni", weights, neighborhoods, optimize=True)
             centered = neighborhoods - centroid[:, None, :]
