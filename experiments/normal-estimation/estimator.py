@@ -13,6 +13,7 @@ FIRST_STATISTIC_COUNT = 64
 FINAL_NEIGHBOR_COUNT = 128
 FINAL_STATISTIC_COUNT = 32
 INITIAL_NEIGHBOR_COUNT = 224
+THIRD_COVARIANCE_BANDWIDTH_COUNT = 108
 DISTANCE_DECAY = 2.0
 TUKEY_CUTOFFS = (4.15, 2.77, 2.77)
 THIRD_REFINEMENT_MAX_THICKNESS = 0.1
@@ -110,7 +111,25 @@ def estimate_normals(
             inside = normalized * normalized < 1.0
             robust_weights = np.square(1.0 - normalized * normalized) * inside
 
-            weights = distance_weights * robust_weights
+            if step == 2:
+                covariance_distances = initial_distances[:, :refinement_count]
+                covariance_bandwidth = initial_distances[
+                    :,
+                    THIRD_COVARIANCE_BANDWIDTH_COUNT
+                    - 1 : THIRD_COVARIANCE_BANDWIDTH_COUNT,
+                ]
+                covariance_scaled_squared = np.divide(
+                    covariance_distances * covariance_distances,
+                    covariance_bandwidth * covariance_bandwidth,
+                    out=np.zeros_like(covariance_distances, dtype=np.float64),
+                    where=covariance_bandwidth > 0.0,
+                )
+                covariance_distance_weights = np.exp(
+                    -DISTANCE_DECAY * covariance_scaled_squared
+                )
+                weights = covariance_distance_weights * robust_weights
+            else:
+                weights = distance_weights * robust_weights
             weights /= weights.sum(axis=1, keepdims=True)
             centroid = np.einsum("nk,nki->ni", weights, neighborhoods, optimize=True)
             covariance = np.einsum(
