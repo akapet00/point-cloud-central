@@ -35,10 +35,10 @@ def estimate_normals(
 ) -> np.ndarray:
     """Estimate normals from broad initialization and local robust PCA.
 
-    A 224-neighbor Gaussian tail stabilizes the provisional tangent under
-    positional noise. Two Tukey-biweight IRLS steps then refine that normal
-    using only the query-local 112-neighbor patch, limiting broad-neighborhood
-    bias and rejecting extreme point-to-plane residuals.
+    A 224-neighbor rank-Gaussian tail stabilizes the provisional tangent under
+    positional noise. Using neighbor rank instead of noisy metric distance
+    fixes the effective sample profile. Two local Tukey-biweight IRLS steps
+    then limit broad-neighborhood bias and reject extreme plane residuals.
     """
     del query_indices
     if neighbor_indices.shape[1] < INITIAL_NEIGHBOR_COUNT:
@@ -53,14 +53,13 @@ def estimate_normals(
         ]
         initial_distances = neighbor_distances[start:stop, :INITIAL_NEIGHBOR_COUNT]
         bandwidth = initial_distances[:, NEIGHBOR_COUNT - 1 : NEIGHBOR_COUNT]
-        scaled_squared = np.divide(
-            initial_distances * initial_distances,
-            bandwidth * bandwidth,
-            out=np.zeros_like(initial_distances, dtype=np.float64),
-            where=bandwidth > 0.0,
-        )
-        initial_weights = np.exp(-DISTANCE_DECAY * scaled_squared)
-        initial_weights /= initial_weights.sum(axis=1, keepdims=True)
+        # On a locally two-dimensional surface, squared radius grows linearly
+        # with neighbor rank. This profile is immune to noise in the distances.
+        rank_squared_radius = np.arange(INITIAL_NEIGHBOR_COUNT, dtype=np.float64)
+        rank_squared_radius /= NEIGHBOR_COUNT - 1
+        rank_weights = np.exp(-DISTANCE_DECAY * rank_squared_radius)
+        initial_weights = np.broadcast_to(rank_weights, initial_distances.shape)
+        initial_weights = initial_weights / initial_weights.sum(axis=1, keepdims=True)
 
         centroid = np.einsum(
             "nk,nki->ni", initial_weights, initial_neighborhoods, optimize=True
@@ -77,7 +76,14 @@ def estimate_normals(
         normals = eigenvectors[:, :, 0]
 
         neighborhoods = initial_neighborhoods[:, :NEIGHBOR_COUNT]
-        distance_weights = initial_weights[:, :NEIGHBOR_COUNT]
+        local_distances = initial_distances[:, :NEIGHBOR_COUNT]
+        local_squared_radius = np.divide(
+            local_distances * local_distances,
+            bandwidth * bandwidth,
+            out=np.zeros_like(local_distances, dtype=np.float64),
+            where=bandwidth > 0.0,
+        )
+        distance_weights = np.exp(-DISTANCE_DECAY * local_squared_radius)
         distance_weights /= distance_weights.sum(axis=1, keepdims=True)
         centered = neighborhoods - centroid[:, None, :]
         scale_floor = np.finfo(np.float64).eps * np.maximum(bandwidth, 1.0)
