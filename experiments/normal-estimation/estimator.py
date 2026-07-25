@@ -8,7 +8,8 @@ from __future__ import annotations
 
 import numpy as np
 
-NEIGHBOR_COUNT = 112
+SUPPORT_NEIGHBOR_COUNT = 160
+BANDWIDTH_NEIGHBOR_COUNT = 112
 DISTANCE_DECAY = 2.0
 ROBUST_CUTOFF = 2.5
 ROBUST_REWEIGHTING_STEPS = 2
@@ -24,22 +25,22 @@ def estimate_normals(
 ) -> np.ndarray:
     """Estimate unoriented normals with two-step robust weighted PCA.
 
-    An initial Gaussian distance-weighted fit supplies a provisional tangent
-    plane. Two Cauchy IRLS steps then limit the covariance leverage of points
-    with large normalized point-to-plane residuals, refining the residuals once
-    from the first robust plane before producing the final normal.
+    A Gaussian kernel whose bandwidth is set by the 112th neighbor is retained
+    through a 160-neighbor support, adding a low-weight tail for noise averaging
+    without broadening the local kernel. Two Cauchy IRLS steps then limit the
+    covariance leverage of large point-to-plane residuals.
     """
     del query_indices
-    if neighbor_indices.shape[1] < NEIGHBOR_COUNT:
-        msg = f"At least {NEIGHBOR_COUNT} cached neighbors are required"
+    if neighbor_indices.shape[1] < SUPPORT_NEIGHBOR_COUNT:
+        msg = f"At least {SUPPORT_NEIGHBOR_COUNT} cached neighbors are required"
         raise ValueError(msg)
 
     estimated = np.empty((neighbor_indices.shape[0], 3), dtype=np.float64)
     for start in range(0, neighbor_indices.shape[0], BATCH_SIZE):
         stop = min(start + BATCH_SIZE, neighbor_indices.shape[0])
-        neighborhoods = points[neighbor_indices[start:stop, :NEIGHBOR_COUNT]]
-        distances = neighbor_distances[start:stop, :NEIGHBOR_COUNT]
-        radius = distances[:, -1:]
+        neighborhoods = points[neighbor_indices[start:stop, :SUPPORT_NEIGHBOR_COUNT]]
+        distances = neighbor_distances[start:stop, :SUPPORT_NEIGHBOR_COUNT]
+        radius = distances[:, BANDWIDTH_NEIGHBOR_COUNT - 1 : BANDWIDTH_NEIGHBOR_COUNT]
         scaled_squared = np.divide(
             distances * distances,
             radius * radius,
