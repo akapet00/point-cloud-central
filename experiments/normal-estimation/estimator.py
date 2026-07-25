@@ -84,7 +84,7 @@ def estimate_normals(
         refinement_counts = (
             NEIGHBOR_COUNT,
             FINAL_NEIGHBOR_COUNT,
-            FINAL_NEIGHBOR_COUNT,
+            NEIGHBOR_COUNT,
         )
         statistic_counts = (
             FIRST_STATISTIC_COUNT,
