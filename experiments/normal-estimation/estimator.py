@@ -21,12 +21,12 @@ def estimate_normals(
     neighbor_indices: np.ndarray,
     neighbor_distances: np.ndarray,
 ) -> np.ndarray:
-    """Estimate unoriented normals with two-step robust weighted PCA.
+    """Estimate unoriented normals with confidence-adaptive robust PCA.
 
     An initial Gaussian distance-weighted fit supplies a provisional tangent
-    plane. Two Cauchy IRLS steps then limit the covariance leverage of points
-    with large normalized point-to-plane residuals, refining the residuals once
-    from the first robust plane before producing the final normal.
+    plane. Two Cauchy IRLS steps limit large residuals; the second cutoff is
+    relaxed smoothly when the initial normal eigenvalue is poorly separated,
+    preserving more covariance support on noise-ambiguous patches.
     """
     del query_indices
     if neighbor_indices.shape[1] < NEIGHBOR_COUNT:
@@ -59,11 +59,21 @@ def estimate_normals(
             centered,
             optimize=True,
         )
-        _, eigenvectors = np.linalg.eigh(covariance)
+        eigenvalues, eigenvectors = np.linalg.eigh(covariance)
         normals = eigenvectors[:, :, 0]
+        normal_ambiguity = np.divide(
+            eigenvalues[:, :1],
+            eigenvalues[:, 1:2],
+            out=np.zeros_like(eigenvalues[:, :1]),
+            where=eigenvalues[:, 1:2] > 0.0,
+        )
+        normal_ambiguity = np.clip(normal_ambiguity, 0.0, 1.0)
 
         scale_floor = np.finfo(np.float64).eps * np.maximum(radius, 1.0)
-        for robust_cutoff in ROBUST_CUTOFFS:
+        for step, base_cutoff in enumerate(ROBUST_CUTOFFS):
+            robust_cutoff = base_cutoff
+            if step == 1:
+                robust_cutoff = robust_cutoff + normal_ambiguity
             residuals = np.einsum("nki,ni->nk", centered, normals, optimize=True)
             residual_median = np.median(residuals, axis=1, keepdims=True)
             robust_scale = MAD_TO_SIGMA * np.median(
