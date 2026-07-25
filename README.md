@@ -1,6 +1,12 @@
 # Point Cloud Central
 
-A collection of standalone Jupyter notebooks for experimenting with point-cloud processing techniques. Each notebook contains the code needed for its experiment; datasets and media are shared at the repository root.
+A collection of point-cloud processing experiments. Educational explorations remain self-contained in notebooks, while reproducible command-line studies live under `experiments/`.
+
+## Experiments
+
+| Experiment | Description |
+| --- | --- |
+| [Explainable normal-estimation search](experiments/normal-estimation/README.md) | Stateless Pi search for simple, PCA-derived normal estimators on PCPNet. |
 
 ## Notebooks
 
