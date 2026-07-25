@@ -12,6 +12,7 @@ NEIGHBOR_COUNT = 112
 INITIAL_NEIGHBOR_COUNT = 224
 DISTANCE_DECAY = 2.0
 ROBUST_CUTOFFS = (2.5, 1.5)
+REFINEMENT_NEIGHBOR_COUNTS = (NEIGHBOR_COUNT, 96)
 MAD_TO_SIGMA = 1.4826
 BATCH_SIZE = 2_048
 
@@ -25,8 +26,8 @@ def estimate_normals(
     """Estimate normals from broad initialization and local robust PCA.
 
     A 224-neighbor Gaussian tail stabilizes the provisional tangent under
-    positional noise. Two Cauchy IRLS steps then refine that normal using only
-    the query-local 112-neighbor patch, limiting broad-neighborhood bias.
+    positional noise. Cauchy IRLS then refines on 112 neighbors before a more
+    local 96-neighbor final fit limits residual curvature and density bias.
     """
     del query_indices
     if neighbor_indices.shape[1] < INITIAL_NEIGHBOR_COUNT:
@@ -69,8 +70,12 @@ def estimate_normals(
         distance_weights /= distance_weights.sum(axis=1, keepdims=True)
         centered = neighborhoods - centroid[:, None, :]
         scale_floor = np.finfo(np.float64).eps * np.maximum(bandwidth, 1.0)
-        for robust_cutoff in ROBUST_CUTOFFS:
-            residuals = np.einsum("nki,ni->nk", centered, normals, optimize=True)
+        for robust_cutoff, refinement_count in zip(
+            ROBUST_CUTOFFS, REFINEMENT_NEIGHBOR_COUNTS, strict=True
+        ):
+            fit_neighborhoods = neighborhoods[:, :refinement_count]
+            fit_centered = centered[:, :refinement_count]
+            residuals = np.einsum("nki,ni->nk", fit_centered, normals, optimize=True)
             residual_median = np.median(residuals, axis=1, keepdims=True)
             robust_scale = MAD_TO_SIGMA * np.median(
                 np.abs(residuals - residual_median), axis=1, keepdims=True
@@ -79,15 +84,18 @@ def estimate_normals(
             normalized = residuals / (robust_cutoff * robust_scale)
             robust_weights = 1.0 / (1.0 + normalized * normalized)
 
-            weights = distance_weights * robust_weights
+            weights = distance_weights[:, :refinement_count] * robust_weights
             weights /= weights.sum(axis=1, keepdims=True)
-            centroid = np.einsum("nk,nki->ni", weights, neighborhoods, optimize=True)
-            centered = neighborhoods - centroid[:, None, :]
+            centroid = np.einsum(
+                "nk,nki->ni", weights, fit_neighborhoods, optimize=True
+            )
+            fit_centered = fit_neighborhoods - centroid[:, None, :]
             covariance = np.einsum(
-                "nk,nki,nkj->nij", weights, centered, centered, optimize=True
+                "nk,nki,nkj->nij", weights, fit_centered, fit_centered, optimize=True
             )
             _, eigenvectors = np.linalg.eigh(covariance)
             normals = eigenvectors[:, :, 0]
+            centered = neighborhoods - centroid[:, None, :]
 
         estimated[start:stop] = normals
 
