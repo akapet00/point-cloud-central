@@ -10,6 +10,7 @@ import numpy as np
 
 NEIGHBOR_COUNT = 112
 REFINEMENT_NEIGHBOR_COUNT = 160
+FINAL_BANDWIDTH_NEIGHBOR_COUNT = 96
 INITIAL_NEIGHBOR_COUNT = 224
 DISTANCE_DECAY = 2.0
 ROBUST_CUTOFFS = (2.5, 1.5)
@@ -78,11 +79,28 @@ def estimate_normals(
 
         scale_floor = np.finfo(np.float64).eps * np.maximum(bandwidth, 1.0)
         refinement_sizes = (NEIGHBOR_COUNT, REFINEMENT_NEIGHBOR_COUNT)
-        for robust_cutoff, refinement_size in zip(
-            ROBUST_CUTOFFS, refinement_sizes, strict=True
+        refinement_bandwidth_counts = (
+            NEIGHBOR_COUNT,
+            FINAL_BANDWIDTH_NEIGHBOR_COUNT,
+        )
+        for robust_cutoff, refinement_size, bandwidth_count in zip(
+            ROBUST_CUTOFFS,
+            refinement_sizes,
+            refinement_bandwidth_counts,
+            strict=True,
         ):
             neighborhoods = initial_neighborhoods[:, :refinement_size]
-            distance_weights = initial_weights[:, :refinement_size].copy()
+            distances = initial_distances[:, :refinement_size]
+            refinement_bandwidth = initial_distances[
+                :, bandwidth_count - 1 : bandwidth_count
+            ]
+            scaled_squared = np.divide(
+                distances * distances,
+                refinement_bandwidth * refinement_bandwidth,
+                out=np.zeros_like(distances, dtype=np.float64),
+                where=refinement_bandwidth > 0.0,
+            )
+            distance_weights = np.exp(-DISTANCE_DECAY * scaled_squared)
             distance_weights /= distance_weights.sum(axis=1, keepdims=True)
             centered = neighborhoods - centroid[:, None, :]
             residuals = np.einsum("nki,ni->nk", centered, normals, optimize=True)
