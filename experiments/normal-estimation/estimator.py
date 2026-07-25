@@ -14,6 +14,7 @@ FIRST_STATISTIC_COUNT = 64
 FINAL_NEIGHBOR_COUNT = 128
 FINAL_STATISTIC_COUNT = 32
 INITIAL_NEIGHBOR_COUNT = 224
+INITIAL_BANDWIDTH_COUNT = 114
 DISTANCE_DECAY = 2.0
 TUKEY_CUTOFFS = (4.62, 2.77)
 MAD_TO_SIGMA = 1.4826
@@ -57,12 +58,15 @@ def estimate_normals(
             neighbor_indices[start:stop, :INITIAL_NEIGHBOR_COUNT]
         ]
         initial_distances = neighbor_distances[start:stop, :INITIAL_NEIGHBOR_COUNT]
-        bandwidth = initial_distances[:, NEIGHBOR_COUNT - 1 : NEIGHBOR_COUNT]
+        refinement_bandwidth = initial_distances[:, NEIGHBOR_COUNT - 1 : NEIGHBOR_COUNT]
+        initial_bandwidth = initial_distances[
+            :, INITIAL_BANDWIDTH_COUNT - 1 : INITIAL_BANDWIDTH_COUNT
+        ]
         scaled_squared = np.divide(
             initial_distances * initial_distances,
-            bandwidth * bandwidth,
+            initial_bandwidth * initial_bandwidth,
             out=np.zeros_like(initial_distances, dtype=np.float64),
-            where=bandwidth > 0.0,
+            where=initial_bandwidth > 0.0,
         )
         initial_weights = np.exp(-DISTANCE_DECAY * scaled_squared)
         initial_weights /= initial_weights.sum(axis=1, keepdims=True)
@@ -81,14 +85,21 @@ def estimate_normals(
         _, eigenvectors = np.linalg.eigh(covariance)
         normals = eigenvectors[:, :, 0]
 
-        scale_floor = np.finfo(np.float64).eps * np.maximum(bandwidth, 1.0)
+        refinement_scaled_squared = np.divide(
+            initial_distances * initial_distances,
+            refinement_bandwidth * refinement_bandwidth,
+            out=np.zeros_like(initial_distances, dtype=np.float64),
+            where=refinement_bandwidth > 0.0,
+        )
+        refinement_weights = np.exp(-DISTANCE_DECAY * refinement_scaled_squared)
+        scale_floor = np.finfo(np.float64).eps * np.maximum(refinement_bandwidth, 1.0)
         refinement_counts = (FIRST_REFINEMENT_COUNT, FINAL_NEIGHBOR_COUNT)
         statistic_counts = (FIRST_STATISTIC_COUNT, FINAL_STATISTIC_COUNT)
         for tukey_cutoff, refinement_count, statistic_count in zip(
             TUKEY_CUTOFFS, refinement_counts, statistic_counts, strict=True
         ):
             neighborhoods = initial_neighborhoods[:, :refinement_count]
-            distance_weights = initial_weights[:, :refinement_count].copy()
+            distance_weights = refinement_weights[:, :refinement_count].copy()
             distance_weights /= distance_weights.sum(axis=1, keepdims=True)
             centered = neighborhoods - centroid[:, None, :]
             residuals = np.einsum("nki,ni->nk", centered, normals, optimize=True)
