@@ -9,6 +9,7 @@ from __future__ import annotations
 import numpy as np
 
 NEIGHBOR_COUNT = 112
+INITIAL_BANDWIDTH_COUNT = 108
 FIRST_REFINEMENT_COUNT = 120
 FIRST_STATISTIC_COUNT = 64
 FINAL_NEIGHBOR_COUNT = 128
@@ -39,8 +40,8 @@ def estimate_normals(
 ) -> np.ndarray:
     """Estimate normals from broad initialization and local robust PCA.
 
-    A 224-neighbor Gaussian tail stabilizes the provisional tangent under
-    positional noise. Two Tukey-biweight IRLS steps refine that normal; their
+    A tightly tapered 224-neighbor Gaussian tail initializes the provisional
+    tangent. Two Tukey-biweight IRLS steps refine that normal; their
     120- and 128-point covariances use robust location and scale from the
     nearest 64 and 32 samples so curved tail points cannot define their own
     leverage.
@@ -57,15 +58,26 @@ def estimate_normals(
             neighbor_indices[start:stop, :INITIAL_NEIGHBOR_COUNT]
         ]
         initial_distances = neighbor_distances[start:stop, :INITIAL_NEIGHBOR_COUNT]
-        bandwidth = initial_distances[:, NEIGHBOR_COUNT - 1 : NEIGHBOR_COUNT]
-        scaled_squared = np.divide(
+        initial_bandwidth = initial_distances[
+            :, INITIAL_BANDWIDTH_COUNT - 1 : INITIAL_BANDWIDTH_COUNT
+        ]
+        initial_scaled_squared = np.divide(
             initial_distances * initial_distances,
-            bandwidth * bandwidth,
+            initial_bandwidth * initial_bandwidth,
             out=np.zeros_like(initial_distances, dtype=np.float64),
-            where=bandwidth > 0.0,
+            where=initial_bandwidth > 0.0,
         )
-        initial_weights = np.exp(-DISTANCE_DECAY * scaled_squared)
+        initial_weights = np.exp(-DISTANCE_DECAY * initial_scaled_squared)
         initial_weights /= initial_weights.sum(axis=1, keepdims=True)
+
+        refinement_bandwidth = initial_distances[:, NEIGHBOR_COUNT - 1 : NEIGHBOR_COUNT]
+        refinement_scaled_squared = np.divide(
+            initial_distances * initial_distances,
+            refinement_bandwidth * refinement_bandwidth,
+            out=np.zeros_like(initial_distances, dtype=np.float64),
+            where=refinement_bandwidth > 0.0,
+        )
+        refinement_weights = np.exp(-DISTANCE_DECAY * refinement_scaled_squared)
 
         centroid = np.einsum(
             "nk,nki->ni", initial_weights, initial_neighborhoods, optimize=True
@@ -81,14 +93,14 @@ def estimate_normals(
         _, eigenvectors = np.linalg.eigh(covariance)
         normals = eigenvectors[:, :, 0]
 
-        scale_floor = np.finfo(np.float64).eps * np.maximum(bandwidth, 1.0)
+        scale_floor = np.finfo(np.float64).eps * np.maximum(refinement_bandwidth, 1.0)
         refinement_counts = (FIRST_REFINEMENT_COUNT, FINAL_NEIGHBOR_COUNT)
         statistic_counts = (FIRST_STATISTIC_COUNT, FINAL_STATISTIC_COUNT)
         for tukey_cutoff, refinement_count, statistic_count in zip(
             TUKEY_CUTOFFS, refinement_counts, statistic_counts, strict=True
         ):
             neighborhoods = initial_neighborhoods[:, :refinement_count]
-            distance_weights = initial_weights[:, :refinement_count].copy()
+            distance_weights = refinement_weights[:, :refinement_count].copy()
             distance_weights /= distance_weights.sum(axis=1, keepdims=True)
             centered = neighborhoods - centroid[:, None, :]
             residuals = np.einsum("nki,ni->nk", centered, normals, optimize=True)
