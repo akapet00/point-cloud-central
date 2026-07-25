@@ -14,7 +14,8 @@ FINAL_NEIGHBOR_COUNT = 128
 FINAL_STATISTIC_COUNT = 32
 INITIAL_NEIGHBOR_COUNT = 224
 DISTANCE_DECAY = 2.0
-TUKEY_CUTOFFS = (4.15, 2.77, 2.77)
+TUKEY_CUTOFFS = (4.15, 2.77)
+THIRD_CAUCHY_CUTOFF = 1.5
 THIRD_REFINEMENT_MAX_THICKNESS = 0.1
 MAD_TO_SIGMA = 1.4826
 BATCH_SIZE = 2_048
@@ -41,8 +42,8 @@ def estimate_normals(
 
     A 224-neighbor Gaussian tail stabilizes the provisional tangent under
     positional noise. Two Tukey-biweight IRLS steps refine that normal using
-    query-local residual statistics. A third step is accepted only for a thin
-    local sheet, where another redescending fit is unlikely to reject noise.
+    query-local residual statistics. On thin local sheets, a third Cauchy
+    step refines the tangent without completely rejecting residual support.
     """
     del query_indices
     if neighbor_indices.shape[1] < INITIAL_NEIGHBOR_COUNT:
@@ -91,8 +92,9 @@ def estimate_normals(
             FINAL_STATISTIC_COUNT,
             FINAL_STATISTIC_COUNT,
         )
-        for step, (tukey_cutoff, refinement_count, statistic_count) in enumerate(
-            zip(TUKEY_CUTOFFS, refinement_counts, statistic_counts, strict=True)
+        robust_cutoffs = (*TUKEY_CUTOFFS, THIRD_CAUCHY_CUTOFF)
+        for step, (cutoff, refinement_count, statistic_count) in enumerate(
+            zip(robust_cutoffs, refinement_counts, statistic_counts, strict=True)
         ):
             neighborhoods = initial_neighborhoods[:, :refinement_count]
             distance_weights = initial_weights[:, :refinement_count].copy()
@@ -106,9 +108,14 @@ def estimate_normals(
                 np.abs(statistic_residuals - residual_median), statistic_weights
             )
             robust_scale = np.maximum(robust_scale, scale_floor)
-            normalized = (residuals - residual_median) / (tukey_cutoff * robust_scale)
-            inside = normalized * normalized < 1.0
-            robust_weights = np.square(1.0 - normalized * normalized) * inside
+            normalized = (residuals - residual_median) / (cutoff * robust_scale)
+            squared_normalized = normalized * normalized
+            if step == 2:
+                robust_weights = 1.0 / (1.0 + squared_normalized)
+            else:
+                robust_weights = np.square(1.0 - squared_normalized) * (
+                    squared_normalized < 1.0
+                )
 
             weights = distance_weights * robust_weights
             weights /= weights.sum(axis=1, keepdims=True)
