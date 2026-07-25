@@ -10,6 +10,7 @@ import numpy as np
 
 NEIGHBOR_COUNT = 112
 FIRST_REFINEMENT_COUNT = 120
+FIRST_BANDWIDTH_COUNT = 114
 FIRST_STATISTIC_COUNT = 64
 FINAL_NEIGHBOR_COUNT = 128
 FINAL_STATISTIC_COUNT = 32
@@ -88,7 +89,21 @@ def estimate_normals(
             TUKEY_CUTOFFS, refinement_counts, statistic_counts, strict=True
         ):
             neighborhoods = initial_neighborhoods[:, :refinement_count]
-            distance_weights = initial_weights[:, :refinement_count].copy()
+            if refinement_count == FIRST_REFINEMENT_COUNT:
+                refinement_bandwidth = initial_distances[
+                    :, FIRST_BANDWIDTH_COUNT - 1 : FIRST_BANDWIDTH_COUNT
+                ]
+                refinement_squared = np.divide(
+                    initial_distances[:, :refinement_count] ** 2,
+                    refinement_bandwidth**2,
+                    out=np.zeros_like(
+                        initial_distances[:, :refinement_count], dtype=np.float64
+                    ),
+                    where=refinement_bandwidth > 0.0,
+                )
+                distance_weights = np.exp(-DISTANCE_DECAY * refinement_squared)
+            else:
+                distance_weights = initial_weights[:, :refinement_count].copy()
             distance_weights /= distance_weights.sum(axis=1, keepdims=True)
             centered = neighborhoods - centroid[:, None, :]
             residuals = np.einsum("nki,ni->nk", centered, normals, optimize=True)
