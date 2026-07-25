@@ -36,11 +36,11 @@ def estimate_normals(
     """Estimate normals from broad initialization and local robust PCA.
 
     A 224-neighbor Gaussian tail stabilizes the provisional tangent under
-    positional noise. Two Tukey-biweight IRLS steps then refine that normal
-    using only the query-local 112-neighbor patch, limiting broad-neighborhood
-    bias and rejecting extreme point-to-plane residuals.
+    positional noise. The query sample is left out so its own displacement
+    cannot receive maximum kernel leverage. Two Tukey-biweight IRLS steps then
+    refine the normal on the query-local 112-neighbor patch, limiting broad
+    neighborhood bias and rejecting extreme point-to-plane residuals.
     """
-    del query_indices
     if neighbor_indices.shape[1] < INITIAL_NEIGHBOR_COUNT:
         msg = f"At least {INITIAL_NEIGHBOR_COUNT} cached neighbors are required"
         raise ValueError(msg)
@@ -48,9 +48,8 @@ def estimate_normals(
     estimated = np.empty((neighbor_indices.shape[0], 3), dtype=np.float64)
     for start in range(0, neighbor_indices.shape[0], BATCH_SIZE):
         stop = min(start + BATCH_SIZE, neighbor_indices.shape[0])
-        initial_neighborhoods = points[
-            neighbor_indices[start:stop, :INITIAL_NEIGHBOR_COUNT]
-        ]
+        initial_indices = neighbor_indices[start:stop, :INITIAL_NEIGHBOR_COUNT]
+        initial_neighborhoods = points[initial_indices]
         initial_distances = neighbor_distances[start:stop, :INITIAL_NEIGHBOR_COUNT]
         bandwidth = initial_distances[:, NEIGHBOR_COUNT - 1 : NEIGHBOR_COUNT]
         scaled_squared = np.divide(
@@ -59,7 +58,8 @@ def estimate_normals(
             out=np.zeros_like(initial_distances, dtype=np.float64),
             where=bandwidth > 0.0,
         )
-        initial_weights = np.exp(-DISTANCE_DECAY * scaled_squared)
+        self_mask = initial_indices != query_indices[start:stop, None]
+        initial_weights = np.exp(-DISTANCE_DECAY * scaled_squared) * self_mask
         initial_weights /= initial_weights.sum(axis=1, keepdims=True)
 
         centroid = np.einsum(
