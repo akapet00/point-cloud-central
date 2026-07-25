@@ -10,8 +10,7 @@ import numpy as np
 
 NEIGHBOR_COUNT = 112
 DISTANCE_DECAY = 2.0
-ROBUST_CUTOFF = 2.5
-ROBUST_REWEIGHTING_STEPS = 2
+ROBUST_CUTOFFS = (3.0, 2.0)
 MAD_TO_SIGMA = 1.4826
 BATCH_SIZE = 2_048
 
@@ -25,9 +24,8 @@ def estimate_normals(
     """Estimate unoriented normals with two-step robust weighted PCA.
 
     An initial Gaussian distance-weighted fit supplies a provisional tangent
-    plane. Two Cauchy IRLS steps then limit the covariance leverage of points
-    with large normalized point-to-plane residuals, refining the residuals once
-    from the first robust plane before producing the final normal.
+    plane. Two Cauchy IRLS steps use a permissive cutoff for residuals from that
+    uncertain plane, then a tighter cutoff after the plane has been corrected.
     """
     del query_indices
     if neighbor_indices.shape[1] < NEIGHBOR_COUNT:
@@ -64,14 +62,14 @@ def estimate_normals(
         normals = eigenvectors[:, :, 0]
 
         scale_floor = np.finfo(np.float64).eps * np.maximum(radius, 1.0)
-        for _ in range(ROBUST_REWEIGHTING_STEPS):
+        for robust_cutoff in ROBUST_CUTOFFS:
             residuals = np.einsum("nki,ni->nk", centered, normals, optimize=True)
             residual_median = np.median(residuals, axis=1, keepdims=True)
             robust_scale = MAD_TO_SIGMA * np.median(
                 np.abs(residuals - residual_median), axis=1, keepdims=True
             )
             robust_scale = np.maximum(robust_scale, scale_floor)
-            normalized = residuals / (ROBUST_CUTOFF * robust_scale)
+            normalized = residuals / (robust_cutoff * robust_scale)
             robust_weights = 1.0 / (1.0 + normalized * normalized)
 
             weights = distance_weights * robust_weights
