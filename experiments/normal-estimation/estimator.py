@@ -12,6 +12,7 @@ NEIGHBOR_COUNT = 112
 FIRST_STATISTIC_COUNT = 64
 FINAL_NEIGHBOR_COUNT = 128
 FINAL_STATISTIC_COUNT = 32
+THIRD_REFINEMENT_COUNT = 127
 INITIAL_NEIGHBOR_COUNT = 224
 DISTANCE_DECAY = 2.0
 TUKEY_CUTOFFS = (4.15, 2.77, 2.77)
@@ -84,7 +85,7 @@ def estimate_normals(
         refinement_counts = (
             NEIGHBOR_COUNT,
             FINAL_NEIGHBOR_COUNT,
-            FINAL_NEIGHBOR_COUNT,
+            THIRD_REFINEMENT_COUNT,
         )
         statistic_counts = (
             FIRST_STATISTIC_COUNT,
