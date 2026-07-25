@@ -15,6 +15,7 @@ FINAL_STATISTIC_COUNT = 32
 INITIAL_NEIGHBOR_COUNT = 224
 DISTANCE_DECAY = 2.0
 TUKEY_CUTOFFS = (4.15, 2.77, 2.77)
+THIRD_TUKEY_POWER = 1.5
 THIRD_REFINEMENT_MAX_THICKNESS = 0.1
 MAD_TO_SIGMA = 1.4826
 BATCH_SIZE = 2_048
@@ -107,8 +108,11 @@ def estimate_normals(
             )
             robust_scale = np.maximum(robust_scale, scale_floor)
             normalized = (residuals - residual_median) / (tukey_cutoff * robust_scale)
-            inside = normalized * normalized < 1.0
-            robust_weights = np.square(1.0 - normalized * normalized) * inside
+            compact_profile = np.maximum(1.0 - normalized * normalized, 0.0)
+            if step == 2:
+                robust_weights = np.power(compact_profile, THIRD_TUKEY_POWER)
+            else:
+                robust_weights = np.square(compact_profile)
 
             weights = distance_weights * robust_weights
             weights /= weights.sum(axis=1, keepdims=True)
