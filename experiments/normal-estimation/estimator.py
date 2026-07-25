@@ -10,6 +10,7 @@ import numpy as np
 
 NEIGHBOR_COUNT = 112
 INITIAL_NEIGHBOR_COUNT = 224
+INITIAL_DISTANCE_DECAY = 1.0
 DISTANCE_DECAY = 2.0
 ROBUST_CUTOFFS = (2.5, 1.5)
 MAD_TO_SIGMA = 1.4826
@@ -24,9 +25,10 @@ def estimate_normals(
 ) -> np.ndarray:
     """Estimate normals from broad initialization and local robust PCA.
 
-    A 224-neighbor Gaussian tail stabilizes the provisional tangent under
-    positional noise. Two Cauchy IRLS steps then refine that normal using only
-    the query-local 112-neighbor patch, limiting broad-neighborhood bias.
+    A broad, slowly decaying 224-neighbor Gaussian tail stabilizes the
+    provisional tangent under positional noise. Two Cauchy IRLS steps then
+    refine that normal with the sharper kernel on only the query-local
+    112-neighbor patch, limiting broad-neighborhood bias.
     """
     del query_indices
     if neighbor_indices.shape[1] < INITIAL_NEIGHBOR_COUNT:
@@ -47,7 +49,7 @@ def estimate_normals(
             out=np.zeros_like(initial_distances, dtype=np.float64),
             where=bandwidth > 0.0,
         )
-        initial_weights = np.exp(-DISTANCE_DECAY * scaled_squared)
+        initial_weights = np.exp(-INITIAL_DISTANCE_DECAY * scaled_squared)
         initial_weights /= initial_weights.sum(axis=1, keepdims=True)
 
         centroid = np.einsum(
@@ -65,7 +67,7 @@ def estimate_normals(
         normals = eigenvectors[:, :, 0]
 
         neighborhoods = initial_neighborhoods[:, :NEIGHBOR_COUNT]
-        distance_weights = initial_weights[:, :NEIGHBOR_COUNT]
+        distance_weights = np.exp(-DISTANCE_DECAY * scaled_squared[:, :NEIGHBOR_COUNT])
         distance_weights /= distance_weights.sum(axis=1, keepdims=True)
         centered = neighborhoods - centroid[:, None, :]
         scale_floor = np.finfo(np.float64).eps * np.maximum(bandwidth, 1.0)
