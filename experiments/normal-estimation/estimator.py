@@ -10,6 +10,7 @@ import numpy as np
 
 NEIGHBOR_COUNT = 112
 REFINEMENT_NEIGHBOR_COUNT = 160
+FINAL_BANDWIDTH_NEIGHBOR_COUNT = 128
 INITIAL_NEIGHBOR_COUNT = 224
 DISTANCE_DECAY = 2.0
 ROBUST_CUTOFFS = (2.5, 1.5)
@@ -38,7 +39,8 @@ def estimate_normals(
 
     A 224-neighbor Gaussian tail stabilizes the provisional tangent under
     positional noise. Cauchy IRLS first corrects it on 112 neighbors, then the
-    corrected plane admits a 160-neighbor Gaussian tail for the final fit.
+    final 160-neighbor fit uses a 128th-neighbor bandwidth to give its added
+    noise-averaging tail meaningful weight.
     """
     del query_indices
     if neighbor_indices.shape[1] < INITIAL_NEIGHBOR_COUNT:
@@ -78,11 +80,22 @@ def estimate_normals(
 
         scale_floor = np.finfo(np.float64).eps * np.maximum(bandwidth, 1.0)
         refinement_sizes = (NEIGHBOR_COUNT, REFINEMENT_NEIGHBOR_COUNT)
-        for robust_cutoff, refinement_size in zip(
-            ROBUST_CUTOFFS, refinement_sizes, strict=True
+        bandwidth_sizes = (NEIGHBOR_COUNT, FINAL_BANDWIDTH_NEIGHBOR_COUNT)
+        for robust_cutoff, refinement_size, bandwidth_size in zip(
+            ROBUST_CUTOFFS, refinement_sizes, bandwidth_sizes, strict=True
         ):
             neighborhoods = initial_neighborhoods[:, :refinement_size]
-            distance_weights = initial_weights[:, :refinement_size].copy()
+            refinement_distances = initial_distances[:, :refinement_size]
+            refinement_bandwidth = initial_distances[
+                :, bandwidth_size - 1 : bandwidth_size
+            ]
+            refinement_scaled_squared = np.divide(
+                refinement_distances * refinement_distances,
+                refinement_bandwidth * refinement_bandwidth,
+                out=np.zeros_like(refinement_distances, dtype=np.float64),
+                where=refinement_bandwidth > 0.0,
+            )
+            distance_weights = np.exp(-DISTANCE_DECAY * refinement_scaled_squared)
             distance_weights /= distance_weights.sum(axis=1, keepdims=True)
             centered = neighborhoods - centroid[:, None, :]
             residuals = np.einsum("nki,ni->nk", centered, normals, optimize=True)
