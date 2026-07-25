@@ -11,6 +11,7 @@ import numpy as np
 NEIGHBOR_COUNT = 112
 DISTANCE_DECAY = 2.0
 ROBUST_CUTOFF = 2.5
+REFINED_ROBUST_CUTOFF = 3.0
 ROBUST_REWEIGHTING_STEPS = 2
 MAD_TO_SIGMA = 1.4826
 BATCH_SIZE = 2_048
@@ -64,14 +65,15 @@ def estimate_normals(
         normals = eigenvectors[:, :, 0]
 
         scale_floor = np.finfo(np.float64).eps * np.maximum(radius, 1.0)
-        for _ in range(ROBUST_REWEIGHTING_STEPS):
+        for step in range(ROBUST_REWEIGHTING_STEPS):
             residuals = np.einsum("nki,ni->nk", centered, normals, optimize=True)
             residual_median = np.median(residuals, axis=1, keepdims=True)
             robust_scale = MAD_TO_SIGMA * np.median(
                 np.abs(residuals - residual_median), axis=1, keepdims=True
             )
             robust_scale = np.maximum(robust_scale, scale_floor)
-            normalized = residuals / (ROBUST_CUTOFF * robust_scale)
+            cutoff = ROBUST_CUTOFF if step == 0 else REFINED_ROBUST_CUTOFF
+            normalized = residuals / (cutoff * robust_scale)
             robust_weights = 1.0 / (1.0 + normalized * normalized)
 
             weights = distance_weights * robust_weights
