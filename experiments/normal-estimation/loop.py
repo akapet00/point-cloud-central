@@ -33,6 +33,8 @@ RESULT_FIELDS = (
     "runtime_s",
     "memory_mb",
     "status",
+    "failure_stage",
+    "failure_message",
     "complexity",
     "description",
     "rationale",
@@ -42,9 +44,43 @@ AGENT_READ_FILES = (
     "state.json",
     "results.tsv",
     "notes.md",
+    "condition-memory.md",
+    "batch-strategy.md",
     "README.md",
     "iteration.md",
 )
+
+
+class ExperimentFailure(RuntimeError):
+    """A stage-specific failure suitable for a canonical experiment record."""
+
+    def __init__(
+        self,
+        stage: str,
+        message: str,
+        *,
+        command: list[str] | None = None,
+        return_code: int | None = None,
+        detail: str | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.stage = stage
+        self.command = command
+        self.return_code = return_code
+        self.detail = detail
+
+    def as_record(self) -> dict[str, object]:
+        diagnostic: dict[str, object] = {
+            "stage": self.stage,
+            "message": str(self),
+        }
+        if self.command is not None:
+            diagnostic["command"] = self.command
+        if self.return_code is not None:
+            diagnostic["return_code"] = self.return_code
+        if self.detail:
+            diagnostic["detail"] = self.detail
+        return diagnostic
 
 
 def git(*arguments: str) -> str:
@@ -87,41 +123,136 @@ def sync_views(records: list[dict[str, object]]) -> dict[str, object]:
         writer = csv.DictWriter(file, fieldnames=RESULT_FIELDS, delimiter="\t")
         writer.writeheader()
         for record in records:
-            writer.writerow(
-                {
-                    field: "" if record.get(field) is None else record.get(field, "")
-                    for field in RESULT_FIELDS
-                }
-            )
+            failure = record.get("failure")
+            failure = failure if isinstance(failure, dict) else {}
+            row = {
+                field: "" if record.get(field) is None else record.get(field, "")
+                for field in RESULT_FIELDS
+            }
+            row["failure_stage"] = failure.get("stage", "")
+            row["failure_message"] = failure.get("message", "")
+            writer.writerow(row)
     return state
 
 
+def validate_record_frontier(records: list[dict[str, object]]) -> None:
+    """Verify that canonical records point to durable matching estimators."""
+    for label in ("validated", "frontier"):
+        commit = str(records[-1][label]["commit"])
+        try:
+            estimator = subprocess.check_output(
+                [
+                    "git",
+                    "show",
+                    f"{commit}:experiments/normal-estimation/estimator.py",
+                ],
+                cwd=EXPERIMENT_DIR,
+            )
+        except subprocess.CalledProcessError as error:
+            raise RuntimeError(
+                f"Recorded {label} commit is unavailable: {commit}"
+            ) from error
+        matching_records = [
+            record
+            for record in records
+            if record.get("candidate_commit") == commit
+            and record.get("status") in {"keep", "provisional"}
+        ]
+        if not matching_records:
+            raise RuntimeError(f"No retained canonical record owns {label} {commit}")
+        expected_hash = str(matching_records[-1]["estimator_sha256"])
+        actual_hash = __import__("hashlib").sha256(estimator).hexdigest()
+        if actual_hash != expected_hash:
+            raise RuntimeError(
+                f"Recorded {label} estimator hash does not match {commit}"
+            )
+
+
+def log_tail(path: Path, *, lines: int = 40) -> str | None:
+    """Return a bounded diagnostic tail from a command log."""
+    if not path.is_file():
+        return None
+    selected = path.read_text(errors="replace").splitlines()[-lines:]
+    return "\n".join(selected) or None
+
+
 def evaluate(tier: str, log_path: Path) -> dict[str, object]:
+    commands = (
+        (f"{tier}.prediction", ["uv", "run", "run.py", "--tier", tier]),
+        (f"{tier}.scoring", ["uv", "run", "evaluate.py", "--tier", tier]),
+    )
     with log_path.open("w") as log:
-        subprocess.run(
-            ["uv", "run", "run.py", "--tier", tier],
-            cwd=EXPERIMENT_DIR,
-            stdout=log,
-            stderr=subprocess.STDOUT,
-            check=True,
-        )
-        subprocess.run(
-            ["uv", "run", "evaluate.py", "--tier", tier],
-            cwd=EXPERIMENT_DIR,
-            stdout=log,
-            stderr=subprocess.STDOUT,
-            check=True,
-        )
+        for stage, command in commands:
+            try:
+                subprocess.run(
+                    command,
+                    cwd=EXPERIMENT_DIR,
+                    stdout=log,
+                    stderr=subprocess.STDOUT,
+                    check=True,
+                )
+            except subprocess.CalledProcessError as error:
+                log.flush()
+                raise ExperimentFailure(
+                    stage,
+                    f"command exited with status {error.returncode}",
+                    command=command,
+                    return_code=error.returncode,
+                    detail=log_tail(log_path),
+                ) from error
+
     metrics: dict[str, object] = {"condition_rmse": {}}
-    for line in log_path.read_text().splitlines():
-        key, separator, value = line.partition(":")
-        if separator and key in {"rmse", "runtime_s", "peak_memory_mb"}:
-            metrics[key] = float(value.strip())
-        elif separator and key.startswith("rmse_"):
-            metrics["condition_rmse"][key.removeprefix("rmse_")] = float(value.strip())
-    if not {"rmse", "runtime_s", "peak_memory_mb"}.issubset(metrics):
-        raise RuntimeError(f"Could not parse {tier} metrics")
+    try:
+        for line in log_path.read_text().splitlines():
+            key, separator, value = line.partition(":")
+            if separator and key in {"rmse", "runtime_s", "peak_memory_mb"}:
+                metrics[key] = float(value.strip())
+            elif separator and key.startswith("rmse_"):
+                condition_metrics = metrics["condition_rmse"]
+                assert isinstance(condition_metrics, dict)
+                condition_metrics[key.removeprefix("rmse_")] = float(value.strip())
+    except ValueError as error:
+        raise ExperimentFailure(
+            f"{tier}.metrics",
+            f"could not parse numeric metric: {error}",
+            detail=log_tail(log_path),
+        ) from error
+    missing = {"rmse", "runtime_s", "peak_memory_mb"} - metrics.keys()
+    if missing:
+        raise ExperimentFailure(
+            f"{tier}.metrics",
+            f"missing metrics: {', '.join(sorted(missing))}",
+            detail=log_tail(log_path),
+        )
     return metrics
+
+
+def format_and_lint_candidate() -> None:
+    """Apply deterministic safe fixes and formatting, then verify Ruff."""
+    commands = (
+        ("quality.ruff-fix", ["uv", "run", "ruff", "check", "--fix", "estimator.py"]),
+        ("quality.format", ["uv", "run", "ruff", "format", "estimator.py"]),
+        ("quality.lint", ["uv", "run", "ruff", "check", "estimator.py"]),
+    )
+    for stage, command in commands:
+        result = subprocess.run(
+            command,
+            cwd=EXPERIMENT_DIR,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        if result.returncode:
+            detail = "\n".join(
+                part.strip() for part in (result.stdout, result.stderr) if part.strip()
+            )
+            raise ExperimentFailure(
+                stage,
+                f"Ruff exited with status {result.returncode}",
+                command=command,
+                return_code=result.returncode,
+                detail=detail or None,
+            )
 
 
 def prepare_proposal() -> None:
@@ -207,7 +338,13 @@ def launch_pi(args: argparse.Namespace, iteration: int, log_path: Path) -> int:
 
 def snapshot_protected_files() -> dict[Path, bytes]:
     """Snapshot ignored research memory so Pi cannot rewrite its own history."""
-    paths = [STATE_PATH, RESULTS_PATH, EXPERIMENT_DIR / "notes.md", PROPOSAL_PATH]
+    paths = [
+        STATE_PATH,
+        RESULTS_PATH,
+        EXPERIMENT_DIR / "notes.md",
+        EXPERIMENT_DIR / "condition-memory.md",
+        PROPOSAL_PATH,
+    ]
     paths.extend(RECORD_DIR.glob("*.json"))
     return {path: path.read_bytes() for path in paths if path.is_file()}
 
@@ -217,6 +354,7 @@ def restore_protected_files(snapshot: dict[Path, bytes]) -> None:
         STATE_PATH,
         RESULTS_PATH,
         EXPERIMENT_DIR / "notes.md",
+        EXPERIMENT_DIR / "condition-memory.md",
         PROPOSAL_PATH,
     ]
     protected_paths.extend(RECORD_DIR.glob("*.json"))
@@ -228,14 +366,23 @@ def restore_protected_files(snapshot: dict[Path, bytes]) -> None:
 
 
 def reconcile_pending_tag(iteration: int) -> None:
-    """Remove only an unrecorded tag left by an interrupted finalization."""
+    """Roll back an unrecorded candidate left by interrupted finalization."""
     tag = f"normal-search/{iteration:04d}"
-    if git("tag", "--list", tag):
-        if (RECORD_DIR / f"{iteration:04d}.json").exists():
-            raise RuntimeError(
-                f"Tag and record already exist for iteration {iteration}"
-            )
-        subprocess.run(["git", "tag", "-d", tag], cwd=EXPERIMENT_DIR, check=True)
+    if not git("tag", "--list", tag):
+        return
+    if (RECORD_DIR / f"{iteration:04d}.json").exists():
+        raise RuntimeError(f"Tag and record already exist for iteration {iteration}")
+
+    candidate_commit = git("rev-list", "-n", "1", tag)
+    if git("rev-parse", "HEAD") == candidate_commit:
+        parent = git("rev-parse", f"{candidate_commit}^")
+        subprocess.run(
+            ["git", "reset", "--hard", parent],
+            cwd=EXPERIMENT_DIR,
+            check=True,
+            stdout=subprocess.DEVNULL,
+        )
+    subprocess.run(["git", "tag", "-d", tag], cwd=EXPERIMENT_DIR, check=True)
 
 
 def commit_candidate(iteration: int, description: str) -> str:
@@ -281,6 +428,7 @@ def base_record(
         "source": proposal["source"],
         "kind": proposal["kind"],
         "condition_rmse": {},
+        "failure": None,
         "validation_interval": state["validation_interval"],
         "attempts_since_validation": int(state["attempts_since_validation"]) + 1,
         "frontier": state["frontier"],
@@ -374,39 +522,85 @@ def decide(
     record["frontier"] = accepted | {"status": "keep"}
 
 
-def finalize_record(record: dict[str, object]) -> None:
-    final_commit = str(record["frontier"]["commit"])
-    subprocess.run(
-        ["git", "reset", "--hard", final_commit],
-        cwd=EXPERIMENT_DIR,
-        check=True,
-        stdout=subprocess.DEVNULL,
-    )
-    atomic_json(RECORD_DIR / f"{int(record['iteration']):04d}.json", record)
-    sync_views(load_records())
+def rebuild_research_memory() -> None:
+    """Regenerate agent-facing notes from canonical records."""
     subprocess.run(
         ["uv", "run", "summarize_notes.py"],
         cwd=EXPERIMENT_DIR,
         check=True,
         stdout=subprocess.DEVNULL,
     )
-    PROPOSAL_PATH.unlink(missing_ok=True)
 
 
-def run_iteration(args: argparse.Namespace) -> str:
-    records = load_records()
-    state = sync_views(records)
-    iteration = int(state["iteration"]) + 1
-    reconcile_pending_tag(iteration)
-    frontier_commit = str(state["frontier"]["commit"])
+def finalize_record(
+    record: dict[str, object], restore_commit: str, operational_commit: str
+) -> None:
     subprocess.run(
-        ["git", "reset", "--hard", frontier_commit],
+        ["git", "reset", "--hard", restore_commit],
         cwd=EXPERIMENT_DIR,
         check=True,
         stdout=subprocess.DEVNULL,
     )
+    retained_candidate = (
+        record["status"] in {"keep", "provisional"}
+        and restore_commit == record["candidate_commit"]
+    )
+    if restore_commit != operational_commit and not retained_candidate:
+        estimator = ESTIMATOR_PATH.read_bytes()
+        subprocess.run(
+            ["git", "reset", "--hard", operational_commit],
+            cwd=EXPERIMENT_DIR,
+            check=True,
+            stdout=subprocess.DEVNULL,
+        )
+        if ESTIMATOR_PATH.read_bytes() != estimator:
+            ESTIMATOR_PATH.write_bytes(estimator)
+            subprocess.run(
+                ["git", "add", "estimator.py"], cwd=EXPERIMENT_DIR, check=True
+            )
+            subprocess.run(
+                [
+                    "git",
+                    "commit",
+                    "-m",
+                    f"Experiment {record['iteration']}: restore validated frontier",
+                ],
+                cwd=EXPERIMENT_DIR,
+                check=True,
+                stdout=subprocess.DEVNULL,
+            )
+    atomic_json(RECORD_DIR / f"{int(record['iteration']):04d}.json", record)
+    sync_views(load_records())
+    rebuild_research_memory()
+    PROPOSAL_PATH.unlink(missing_ok=True)
+
+
+def run_iteration(args: argparse.Namespace) -> str:
     if git("status", "--porcelain", "--untracked-files=no"):
-        raise RuntimeError("Tracked tree is not clean at the frontier")
+        raise RuntimeError("Tracked tree must be clean before an iteration")
+
+    records = load_records()
+    validate_record_frontier(records)
+    state = sync_views(records)
+    rebuild_research_memory()
+    iteration = int(state["iteration"]) + 1
+    reconcile_pending_tag(iteration)
+
+    frontier_commit = str(state["frontier"]["commit"])
+    frontier_estimator = subprocess.check_output(
+        [
+            "git",
+            "show",
+            f"{frontier_commit}:experiments/normal-estimation/estimator.py",
+        ],
+        cwd=EXPERIMENT_DIR,
+    )
+    if ESTIMATOR_PATH.read_bytes() != frontier_estimator:
+        raise RuntimeError(
+            "The current estimator does not match the recorded frontier; "
+            "restore it before resuming"
+        )
+    operational_commit = git("rev-parse", "HEAD")
 
     snapshot = snapshot_protected_files()
     prepare_proposal()
@@ -437,49 +631,72 @@ def run_iteration(args: argparse.Namespace) -> str:
         "kind": "parameter",
         "source": "original",
     }
+    proposal_failure: ExperimentFailure | None = None
     try:
         proposal = validate_proposal()
-    except (OSError, ValueError, json.JSONDecodeError):
+    except (OSError, ValueError, json.JSONDecodeError) as error:
         proposal = fallback
-        return_code = return_code or 1
+        proposal_failure = ExperimentFailure("proposal.validation", str(error))
 
     changed = git("diff", "--name-only")
-    valid_edit = changed == "experiments/normal-estimation/estimator.py"
     record = base_record(iteration, state, proposal)
-    if (
-        return_code != 0
-        or not valid_edit
-        or ESTIMATOR_PATH.read_bytes() == estimator_before
-    ):
-        record["description"] = (
-            f"{proposal['description']} (invalid or failed agent edit)"
+    edit_failure = proposal_failure
+    if edit_failure is None and return_code != 0:
+        edit_failure = ExperimentFailure(
+            "agent.invocation",
+            f"Pi exited with status {return_code}",
+            return_code=return_code,
+            detail=log_tail(agent_log),
         )
-        finalize_record(record)
+    if edit_failure is None and changed != "experiments/normal-estimation/estimator.py":
+        paths = changed.splitlines() if changed else []
+        edit_failure = ExperimentFailure(
+            "agent.edit-scope",
+            f"expected only estimator.py to change; changed paths: {paths or 'none'}",
+        )
+    if edit_failure is None and ESTIMATOR_PATH.read_bytes() == estimator_before:
+        edit_failure = ExperimentFailure(
+            "agent.no-change", "agent left estimator.py unchanged"
+        )
+    if edit_failure is not None:
+        record["failure"] = edit_failure.as_record()
+        finalize_record(record, operational_commit, operational_commit)
         return "crash"
 
     try:
-        subprocess.run(
-            ["uv", "run", "ruff", "check", "estimator.py"],
-            cwd=EXPERIMENT_DIR,
-            check=True,
-            stdout=subprocess.DEVNULL,
-        )
-        subprocess.run(
-            ["uv", "run", "ruff", "format", "--check", "estimator.py"],
-            cwd=EXPERIMENT_DIR,
-            check=True,
-            stdout=subprocess.DEVNULL,
-        )
+        format_and_lint_candidate()
+        if ESTIMATOR_PATH.read_bytes() == estimator_before:
+            raise ExperimentFailure(
+                "quality.no-change",
+                "automatic formatting removed the agent's entire change",
+            )
+        record["estimator_sha256"] = sha256(ESTIMATOR_PATH)
         record["candidate_commit"] = commit_candidate(
             iteration, proposal["description"]
         )
         development = evaluate("development", EXPERIMENT_DIR / "run.log")
         decide(record, state, proposal, development)
+    except ExperimentFailure as error:
+        record["failure"] = error.as_record()
     except (OSError, RuntimeError, subprocess.SubprocessError, ValueError) as error:
-        record["description"] = (
-            f"{proposal['description']} (failed: {type(error).__name__})"
+        command = None
+        return_code = None
+        detail = None
+        if isinstance(error, subprocess.CalledProcessError):
+            command = [str(part) for part in error.cmd]
+            return_code = error.returncode
+            detail = str(error.stderr or error.stdout or "").strip() or None
+        failure = ExperimentFailure(
+            "controller.finalization",
+            f"{type(error).__name__}: {error}",
+            command=command,
+            return_code=return_code,
+            detail=detail,
         )
-    finalize_record(record)
+        record["failure"] = failure.as_record()
+
+    restore_commit = str(record["frontier"]["commit"])
+    finalize_record(record, restore_commit, operational_commit)
     return str(record["status"])
 
 

@@ -10,6 +10,8 @@ const allowed = new Set([
   "state.json",
   "results.tsv",
   "notes.md",
+  "condition-memory.md",
+  "batch-strategy.md",
   "estimator.py",
   "proposal.json",
 ]);

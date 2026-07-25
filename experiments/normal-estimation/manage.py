@@ -106,20 +106,11 @@ def initialize() -> None:
     temporary_dir.mkdir()
     (temporary_dir / "0000.json").write_text(json.dumps(record, indent=2) + "\n")
     temporary_dir.replace(RECORD_DIR)
-    NOTES_PATH.write_text(
-        "# Research notes\n\n"
-        "## Frontier\n\n"
-        f"- Validated baseline: development {development['rmse']:.6f}, "
-        f"validation {validation['rmse']:.6f}.\n"
-        "- Method: fixed-neighborhood PCA with k=112.\n\n"
-        "## Confirmed findings\n\n- None beyond the baseline.\n\n"
-        "## Rejected ideas\n\n- None.\n\n"
-        "## Promising next ideas\n\n"
-        "- Establish a coarse fixed-k curve.\n"
-        "- Try simple distance weighting and geometry-driven scale selection.\n"
-    )
     STOP_PATH.unlink(missing_ok=True)
     rebuild_views()
+    from summarize_notes import rebuild_research_memory
+
+    rebuild_research_memory()
     print(
         f"Initialized at {commit[:7]}: dev={development['rmse']:.6f}, "
         f"val={validation['rmse']:.6f}"

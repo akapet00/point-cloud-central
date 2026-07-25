@@ -10,6 +10,7 @@ experiments/normal-estimation/.loop.lock
 experiments/normal-estimation/STOP
 experiments/normal-estimation/agent-logs/
 experiments/normal-estimation/notes.md
+experiments/normal-estimation/condition-memory.md
 experiments/normal-estimation/proposal.json
 experiments/normal-estimation/records/
 experiments/normal-estimation/results.tsv

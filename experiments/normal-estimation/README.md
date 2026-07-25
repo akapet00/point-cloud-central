@@ -25,6 +25,7 @@ Normal orientation is outside this experiment's scope.
 | `estimator.py` | Complete candidate algorithm | **Editable** |
 | `agent-tools.ts` | Path-scoped read/edit tools for isolated Pi invocations | Read-only |
 | `iteration.md` | Instructions for one bounded Pi invocation | Read-only |
+| `batch-strategy.md` | Ordered hypotheses and batch stopping rules | Read-only |
 | `loop.py` | Fresh-process controller | Read-only |
 | `manage.py`, `loop.py`, `summarize_notes.py` | Trusted initialization, evaluation, decisions, and records | Read-only |
 | `prepare.py` | Download and cache PCPNet | Read-only |
@@ -32,7 +33,8 @@ Normal orientation is outside this experiment's scope.
 | `evaluate.py` | Protected scoring | Read-only |
 | `records/` | Canonical immutable record per completed experiment | Generated, untracked |
 | `state.json`, `results.tsv` | Regenerated views of canonical records | Generated, untracked |
-| `notes.md` | Concise cross-iteration research knowledge | Generated, untracked |
+| `notes.md` | Concise cross-iteration research knowledge and failure stages | Generated, untracked |
+| `condition-memory.md` | Per-condition frontier and candidate trade-offs | Generated, untracked |
 | `agent-logs/` | Full output from each Pi process | Generated, untracked |
 
 The baseline estimator is fixed-neighborhood PCA with 112 nearest neighbors.
@@ -107,7 +109,7 @@ uv run manage.py resume
 caffeinate -ims uv run loop.py
 ```
 
-Each measured candidate receives a durable `normal-search/NNNN` Git tag, including discarded attempts. The controller writes one canonical record only after restoring the chosen frontier; state and TSV can be rebuilt from those records. Failed Pi edits become recorded crashes, and repeated crashes stop the loop for review.
+Each measured candidate receives a durable `normal-search/NNNN` Git tag, including discarded attempts. The controller writes one canonical record only after restoring the chosen frontier; state, TSV, notes, and per-condition memory can be rebuilt from those records. Agent edits receive automatic Ruff safe fixes and formatting before evaluation. Failures retain the exact stage, command status, and a bounded diagnostic in the canonical record; repeated crashes stop the loop for review.
 
 Optional controller flags:
 
@@ -118,7 +120,7 @@ Optional controller flags:
 --delay SECONDS      delay between launches
 ```
 
-Each launch uses `pi --no-session --print` with `PI_OFFLINE=1`, no context files, auto-discovered extensions, skills, templates, or built-in tools. A small explicit extension exposes path-scoped reads and exact replacements only inside an isolated workspace. Pi has no prior conversation session and only proposes one edit plus metadata; trusted controller code owns Git, linting, evaluation, validation, decisions, rollback, tagging, and canonical records. Knowledge survives through records, regenerated views, notes, durable Git tags, and logs.
+Each launch uses `pi --no-session --print` with `PI_OFFLINE=1`, no context files, auto-discovered extensions, skills, templates, or built-in tools. A small explicit extension exposes path-scoped reads and exact replacements only inside an isolated workspace. Pi has no prior conversation session and only proposes one edit plus metadata; trusted controller code owns Git, linting, evaluation, validation, decisions, rollback, tagging, and canonical records. Knowledge survives through records, regenerated views, per-condition memory, the tracked batch strategy, durable Git tags, and logs.
 
 ## Simplicity standard
 
