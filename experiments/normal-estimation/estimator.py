@@ -10,7 +10,7 @@ import numpy as np
 
 NEIGHBOR_COUNT = 112
 FINAL_NEIGHBOR_COUNT = 128
-FINAL_STATISTIC_COUNT = 64
+FINAL_STATISTIC_COUNT = 32
 INITIAL_NEIGHBOR_COUNT = 224
 DISTANCE_DECAY = 2.0
 TUKEY_CUTOFFS = (4.62, 2.77)
@@ -40,7 +40,7 @@ def estimate_normals(
     A 224-neighbor Gaussian tail stabilizes the provisional tangent under
     positional noise. Two Tukey-biweight IRLS steps refine that normal; the
     final 128-point covariance uses robust location and scale from its nearest
-    64 samples so curved tail points cannot define their own leverage.
+    32 samples so curved tail points cannot define their own leverage.
     """
     del query_indices
     if neighbor_indices.shape[1] < INITIAL_NEIGHBOR_COUNT:
