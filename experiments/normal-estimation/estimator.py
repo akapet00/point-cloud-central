@@ -10,6 +10,7 @@ import numpy as np
 
 NEIGHBOR_COUNT = 112
 REFINEMENT_NEIGHBOR_COUNT = 160
+FINAL_BANDWIDTH_NEIGHBOR_COUNT = 104
 INITIAL_NEIGHBOR_COUNT = 224
 DISTANCE_DECAY = 2.0
 ROBUST_CUTOFFS = (2.5, 1.5)
@@ -38,7 +39,8 @@ def estimate_normals(
 
     A 224-neighbor Gaussian tail stabilizes the provisional tangent under
     positional noise. Cauchy IRLS first corrects it on 112 neighbors, then the
-    corrected plane admits a 160-neighbor Gaussian tail for the final fit.
+    final 160-neighbor fit uses a narrower 104th-neighbor Gaussian bandwidth
+    to limit curvature and density bias from its decaying sample tail.
     """
     del query_indices
     if neighbor_indices.shape[1] < INITIAL_NEIGHBOR_COUNT:
@@ -83,6 +85,19 @@ def estimate_normals(
         ):
             neighborhoods = initial_neighborhoods[:, :refinement_size]
             distance_weights = initial_weights[:, :refinement_size].copy()
+            if refinement_size == REFINEMENT_NEIGHBOR_COUNT:
+                final_distances = initial_distances[:, :refinement_size]
+                final_bandwidth = initial_distances[
+                    :,
+                    FINAL_BANDWIDTH_NEIGHBOR_COUNT - 1 : FINAL_BANDWIDTH_NEIGHBOR_COUNT,
+                ]
+                final_scaled_squared = np.divide(
+                    final_distances * final_distances,
+                    final_bandwidth * final_bandwidth,
+                    out=np.zeros_like(final_distances, dtype=np.float64),
+                    where=final_bandwidth > 0.0,
+                )
+                distance_weights = np.exp(-DISTANCE_DECAY * final_scaled_squared)
             distance_weights /= distance_weights.sum(axis=1, keepdims=True)
             centered = neighborhoods - centroid[:, None, :]
             residuals = np.einsum("nki,ni->nk", centered, normals, optimize=True)
