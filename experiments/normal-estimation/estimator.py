@@ -10,6 +10,7 @@ import numpy as np
 
 NEIGHBOR_COUNT = 112
 REFINEMENT_NEIGHBOR_COUNT = 160
+FINAL_STATISTIC_NEIGHBOR_COUNT = 96
 INITIAL_NEIGHBOR_COUNT = 224
 DISTANCE_DECAY = 2.0
 ROBUST_CUTOFFS = (2.5, 1.5)
@@ -38,7 +39,8 @@ def estimate_normals(
 
     A 224-neighbor Gaussian tail stabilizes the provisional tangent under
     positional noise. Cauchy IRLS first corrects it on 112 neighbors, then the
-    corrected plane admits a 160-neighbor Gaussian tail for the final fit.
+    corrected plane admits a 160-neighbor Gaussian tail for the final fit. Its
+    robust location and scale come from the local 96-neighbor core.
     """
     del query_indices
     if neighbor_indices.shape[1] < INITIAL_NEIGHBOR_COUNT:
@@ -78,17 +80,22 @@ def estimate_normals(
 
         scale_floor = np.finfo(np.float64).eps * np.maximum(bandwidth, 1.0)
         refinement_sizes = (NEIGHBOR_COUNT, REFINEMENT_NEIGHBOR_COUNT)
-        for robust_cutoff, refinement_size in zip(
-            ROBUST_CUTOFFS, refinement_sizes, strict=True
+        for pass_index, (robust_cutoff, refinement_size) in enumerate(
+            zip(ROBUST_CUTOFFS, refinement_sizes, strict=True)
         ):
             neighborhoods = initial_neighborhoods[:, :refinement_size]
             distance_weights = initial_weights[:, :refinement_size].copy()
             distance_weights /= distance_weights.sum(axis=1, keepdims=True)
             centered = neighborhoods - centroid[:, None, :]
             residuals = np.einsum("nki,ni->nk", centered, normals, optimize=True)
-            residual_median = _weighted_median(residuals, distance_weights)
+            statistic_size = (
+                FINAL_STATISTIC_NEIGHBOR_COUNT if pass_index == 1 else refinement_size
+            )
+            statistic_residuals = residuals[:, :statistic_size]
+            statistic_weights = distance_weights[:, :statistic_size]
+            residual_median = _weighted_median(statistic_residuals, statistic_weights)
             robust_scale = MAD_TO_SIGMA * _weighted_median(
-                np.abs(residuals - residual_median), distance_weights
+                np.abs(statistic_residuals - residual_median), statistic_weights
             )
             robust_scale = np.maximum(robust_scale, scale_floor)
             normalized = (residuals - residual_median) / (robust_cutoff * robust_scale)
