@@ -9,6 +9,7 @@ from __future__ import annotations
 import numpy as np
 
 NEIGHBOR_COUNT = 112
+REFINEMENT_BANDWIDTH_NEIGHBOR_COUNT = 128
 INITIAL_NEIGHBOR_COUNT = 224
 DISTANCE_DECAY = 2.0
 ROBUST_CUTOFFS = (2.5, 1.5)
@@ -76,7 +77,19 @@ def estimate_normals(
         normals = eigenvectors[:, :, 0]
 
         neighborhoods = initial_neighborhoods[:, :NEIGHBOR_COUNT]
-        distance_weights = initial_weights[:, :NEIGHBOR_COUNT]
+        refinement_distances = initial_distances[:, :NEIGHBOR_COUNT]
+        refinement_bandwidth = initial_distances[
+            :,
+            REFINEMENT_BANDWIDTH_NEIGHBOR_COUNT
+            - 1 : REFINEMENT_BANDWIDTH_NEIGHBOR_COUNT,
+        ]
+        refinement_scaled_squared = np.divide(
+            refinement_distances * refinement_distances,
+            refinement_bandwidth * refinement_bandwidth,
+            out=np.zeros_like(refinement_distances, dtype=np.float64),
+            where=refinement_bandwidth > 0.0,
+        )
+        distance_weights = np.exp(-DISTANCE_DECAY * refinement_scaled_squared)
         distance_weights /= distance_weights.sum(axis=1, keepdims=True)
         centered = neighborhoods - centroid[:, None, :]
         scale_floor = np.finfo(np.float64).eps * np.maximum(bandwidth, 1.0)
