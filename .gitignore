@@ -3,6 +3,7 @@ __pycache__/
 .ruff_cache/
 .venv/
 uv.lock
+progress.png
 
 data/PCPNet/
 experiments/normal-estimation/.agent-workspace/
