@@ -9,7 +9,7 @@ from __future__ import annotations
 import numpy as np
 
 NEIGHBOR_COUNT = 112
-INITIAL_NEIGHBOR_COUNT = 224
+INITIAL_NEIGHBOR_COUNT = 192
 DISTANCE_DECAY = 2.0
 TUKEY_CUTOFFS = (3.23, 2.77)
 MAD_TO_SIGMA = 1.4826
