@@ -86,9 +86,11 @@ def estimate_normals(
             distance_weights /= distance_weights.sum(axis=1, keepdims=True)
             centered = neighborhoods - centroid[:, None, :]
             residuals = np.einsum("nki,ni->nk", centered, normals, optimize=True)
-            residual_median = _weighted_median(residuals, distance_weights)
+            scale_residuals = residuals[:, :NEIGHBOR_COUNT]
+            scale_distance_weights = distance_weights[:, :NEIGHBOR_COUNT]
+            residual_median = _weighted_median(scale_residuals, scale_distance_weights)
             robust_scale = MAD_TO_SIGMA * _weighted_median(
-                np.abs(residuals - residual_median), distance_weights
+                np.abs(scale_residuals - residual_median), scale_distance_weights
             )
             robust_scale = np.maximum(robust_scale, scale_floor)
             normalized = (residuals - residual_median) / (robust_cutoff * robust_scale)
