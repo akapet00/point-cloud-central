@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import numpy as np
 
-NEIGHBOR_COUNT = 112
+NEIGHBOR_COUNT = 224
 DISTANCE_DECAY = 2.0
 BATCH_SIZE = 2_048
 
@@ -23,7 +23,7 @@ def estimate_normals(
 
     Gaussian weights decrease with squared distance from the query, using the
     selected neighborhood radius as a density-adaptive bandwidth. This keeps
-    all 112 samples for noise averaging while reducing the leverage of distant
+    all 224 samples for noise averaging while reducing the leverage of distant
     points, which are more likely to cross curved features.
     """
     del query_indices
