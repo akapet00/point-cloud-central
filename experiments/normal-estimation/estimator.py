@@ -9,7 +9,7 @@ from __future__ import annotations
 import numpy as np
 
 NEIGHBOR_COUNT = 112
-INITIAL_NEIGHBOR_COUNT = 224
+INITIAL_NEIGHBOR_COUNT = 216
 DISTANCE_DECAY = 2.0
 TUKEY_CUTOFFS = (3.23, 2.77)
 MAD_TO_SIGMA = 1.4826
@@ -35,7 +35,7 @@ def estimate_normals(
 ) -> np.ndarray:
     """Estimate normals from broad initialization and local robust PCA.
 
-    A 224-neighbor Gaussian tail stabilizes the provisional tangent under
+    A 216-neighbor Gaussian tail stabilizes the provisional tangent under
     positional noise. Two Tukey-biweight IRLS steps then refine that normal
     using only the query-local 112-neighbor patch, limiting broad-neighborhood
     bias and rejecting extreme point-to-plane residuals.
