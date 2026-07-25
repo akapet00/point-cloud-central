@@ -9,6 +9,7 @@ from __future__ import annotations
 import numpy as np
 
 NEIGHBOR_COUNT = 112
+DISTANCE_DECAY = 2.0
 BATCH_SIZE = 2_048
 
 
@@ -18,13 +19,14 @@ def estimate_normals(
     neighbor_indices: np.ndarray,
     neighbor_distances: np.ndarray,
 ) -> np.ndarray:
-    """Estimate unoriented normals with fixed-neighborhood PCA.
+    """Estimate unoriented normals with distance-weighted local PCA.
 
-    The normal is the eigenvector associated with the smallest eigenvalue of
-    the local covariance matrix. ``neighbor_distances`` is unused by this
-    baseline but remains available for weighted or adaptive estimators.
+    Gaussian weights decrease with squared distance from the query, using the
+    selected neighborhood radius as a density-adaptive bandwidth. This keeps
+    all 112 samples for noise averaging while reducing the leverage of distant
+    points, which are more likely to cross curved features.
     """
-    del query_indices, neighbor_distances
+    del query_indices
     if neighbor_indices.shape[1] < NEIGHBOR_COUNT:
         msg = f"At least {NEIGHBOR_COUNT} cached neighbors are required"
         raise ValueError(msg)
@@ -33,8 +35,22 @@ def estimate_normals(
     for start in range(0, neighbor_indices.shape[0], BATCH_SIZE):
         stop = min(start + BATCH_SIZE, neighbor_indices.shape[0])
         neighborhoods = points[neighbor_indices[start:stop, :NEIGHBOR_COUNT]]
-        centered = neighborhoods - neighborhoods.mean(axis=1, keepdims=True)
-        covariance = np.einsum("nki,nkj->nij", centered, centered, optimize=True)
+        distances = neighbor_distances[start:stop, :NEIGHBOR_COUNT]
+        radius = distances[:, -1:, ...]
+        scaled_squared = np.divide(
+            distances * distances,
+            radius * radius,
+            out=np.zeros_like(distances, dtype=np.float64),
+            where=radius > 0.0,
+        )
+        weights = np.exp(-DISTANCE_DECAY * scaled_squared)
+        weights /= weights.sum(axis=1, keepdims=True)
+
+        centroid = np.einsum("nk,nki->ni", weights, neighborhoods, optimize=True)
+        centered = neighborhoods - centroid[:, None, :]
+        covariance = np.einsum(
+            "nk,nki,nkj->nij", weights, centered, centered, optimize=True
+        )
         _, eigenvectors = np.linalg.eigh(covariance)
         estimated[start:stop] = eigenvectors[:, :, 0]
 
