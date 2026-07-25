@@ -9,7 +9,7 @@ from __future__ import annotations
 import numpy as np
 
 NEIGHBOR_COUNT = 112
-FINAL_NEIGHBOR_COUNT = 128
+FINAL_NEIGHBOR_COUNT = 120
 INITIAL_NEIGHBOR_COUNT = 224
 DISTANCE_DECAY = 2.0
 TUKEY_CUTOFFS = (4.62, 2.77)
@@ -37,9 +37,9 @@ def estimate_normals(
     """Estimate normals from broad initialization and local robust PCA.
 
     A 224-neighbor Gaussian tail stabilizes the provisional tangent under
-    positional noise. Two Tukey-biweight IRLS steps then refine that normal
-    using only the query-local 112-neighbor patch, limiting broad-neighborhood
-    bias and rejecting extreme point-to-plane residuals.
+    positional noise. Tukey-biweight IRLS then uses a 112-neighbor correction
+    and a 120-neighbor final tail to balance locality and noise averaging while
+    rejecting extreme point-to-plane residuals.
     """
     del query_indices
     if neighbor_indices.shape[1] < INITIAL_NEIGHBOR_COUNT:
