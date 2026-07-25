@@ -67,6 +67,9 @@ def estimate_normals(
         neighborhoods = initial_neighborhoods[:, :NEIGHBOR_COUNT]
         distance_weights = initial_weights[:, :NEIGHBOR_COUNT]
         distance_weights /= distance_weights.sum(axis=1, keepdims=True)
+        centroid = np.einsum(
+            "nk,nki->ni", distance_weights, neighborhoods, optimize=True
+        )
         centered = neighborhoods - centroid[:, None, :]
         scale_floor = np.finfo(np.float64).eps * np.maximum(bandwidth, 1.0)
         for robust_cutoff in ROBUST_CUTOFFS:
