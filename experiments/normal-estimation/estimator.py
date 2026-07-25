@@ -16,6 +16,7 @@ INITIAL_NEIGHBOR_COUNT = 224
 DISTANCE_DECAY = 2.0
 TUKEY_CUTOFFS = (4.15, 2.77, 2.77)
 THIRD_REFINEMENT_MAX_THICKNESS = 0.1
+THIRD_REFINEMENT_MAX_ANGLE_DEGREES = 5.0
 MAD_TO_SIGMA = 1.4826
 BATCH_SIZE = 2_048
 
@@ -124,7 +125,15 @@ def estimate_normals(
             refined_normals = eigenvectors[:, :, 0]
             if step == 2:
                 thin_sheet = robust_scale <= THIRD_REFINEMENT_MAX_THICKNESS * bandwidth
-                normals = np.where(thin_sheet, refined_normals, normals)
+                cosine = np.abs(
+                    np.einsum("ni,ni->n", normals, refined_normals, optimize=True)
+                )
+                angularly_stable = cosine[:, None] >= np.cos(
+                    np.deg2rad(THIRD_REFINEMENT_MAX_ANGLE_DEGREES)
+                )
+                normals = np.where(
+                    thin_sheet & angularly_stable, refined_normals, normals
+                )
             else:
                 normals = refined_normals
 
