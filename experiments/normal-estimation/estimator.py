@@ -41,7 +41,7 @@ def estimate_normals(
 
     A 224-neighbor Gaussian tail stabilizes the provisional tangent under
     positional noise. Two Tukey-biweight IRLS steps refine that normal using
-    query-local residual statistics. A third step is accepted only for a thin
+    query-local residual statistics. A third step is computed only for a thin
     local sheet, where another redescending fit is unlikely to reject noise.
     """
     del query_indices
@@ -81,18 +81,10 @@ def estimate_normals(
         normals = eigenvectors[:, :, 0]
 
         scale_floor = np.finfo(np.float64).eps * np.maximum(bandwidth, 1.0)
-        refinement_counts = (
-            NEIGHBOR_COUNT,
-            FINAL_NEIGHBOR_COUNT,
-            FINAL_NEIGHBOR_COUNT,
-        )
-        statistic_counts = (
-            FIRST_STATISTIC_COUNT,
-            FINAL_STATISTIC_COUNT,
-            FINAL_STATISTIC_COUNT,
-        )
-        for step, (tukey_cutoff, refinement_count, statistic_count) in enumerate(
-            zip(TUKEY_CUTOFFS, refinement_counts, statistic_counts, strict=True)
+        refinement_counts = (NEIGHBOR_COUNT, FINAL_NEIGHBOR_COUNT)
+        statistic_counts = (FIRST_STATISTIC_COUNT, FINAL_STATISTIC_COUNT)
+        for tukey_cutoff, refinement_count, statistic_count in zip(
+            TUKEY_CUTOFFS[:2], refinement_counts, statistic_counts, strict=True
         ):
             neighborhoods = initial_neighborhoods[:, :refinement_count]
             distance_weights = initial_weights[:, :refinement_count].copy()
@@ -121,12 +113,51 @@ def estimate_normals(
                 optimize=True,
             )
             _, eigenvectors = np.linalg.eigh(covariance)
-            refined_normals = eigenvectors[:, :, 0]
-            if step == 2:
-                thin_sheet = robust_scale <= THIRD_REFINEMENT_MAX_THICKNESS * bandwidth
-                normals = np.where(thin_sheet, refined_normals, normals)
-            else:
-                normals = refined_normals
+            normals = eigenvectors[:, :, 0]
+
+        neighborhoods = initial_neighborhoods[:, :FINAL_NEIGHBOR_COUNT]
+        distance_weights = initial_weights[:, :FINAL_NEIGHBOR_COUNT].copy()
+        distance_weights /= distance_weights.sum(axis=1, keepdims=True)
+        centered = neighborhoods - centroid[:, None, :]
+        residuals = np.einsum("nki,ni->nk", centered, normals, optimize=True)
+        statistic_residuals = residuals[:, :FINAL_STATISTIC_COUNT]
+        statistic_weights = distance_weights[:, :FINAL_STATISTIC_COUNT]
+        residual_median = _weighted_median(statistic_residuals, statistic_weights)
+        robust_scale = MAD_TO_SIGMA * _weighted_median(
+            np.abs(statistic_residuals - residual_median), statistic_weights
+        )
+        robust_scale = np.maximum(robust_scale, scale_floor)
+        thin_sheet = (
+            robust_scale <= THIRD_REFINEMENT_MAX_THICKNESS * bandwidth
+        ).ravel()
+
+        if np.any(thin_sheet):
+            thin_neighborhoods = neighborhoods[thin_sheet]
+            thin_distance_weights = distance_weights[thin_sheet]
+            thin_normalized = (residuals[thin_sheet] - residual_median[thin_sheet]) / (
+                TUKEY_CUTOFFS[2] * robust_scale[thin_sheet]
+            )
+            thin_inside = thin_normalized * thin_normalized < 1.0
+            thin_robust_weights = (
+                np.square(1.0 - thin_normalized * thin_normalized) * thin_inside
+            )
+            thin_weights = thin_distance_weights * thin_robust_weights
+            thin_weights /= thin_weights.sum(axis=1, keepdims=True)
+            thin_centroid = np.einsum(
+                "nk,nki->ni",
+                thin_weights,
+                thin_neighborhoods,
+                optimize=True,
+            )
+            thin_covariance = np.einsum(
+                "nk,nki,nkj->nij",
+                thin_weights,
+                thin_neighborhoods - thin_centroid[:, None, :],
+                thin_neighborhoods - thin_centroid[:, None, :],
+                optimize=True,
+            )
+            _, thin_eigenvectors = np.linalg.eigh(thin_covariance)
+            normals[thin_sheet] = thin_eigenvectors[:, :, 0]
 
         estimated[start:stop] = normals
 
