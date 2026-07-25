@@ -11,6 +11,7 @@ import numpy as np
 NEIGHBOR_COUNT = 112
 DISTANCE_DECAY = 2.0
 ROBUST_CUTOFF = 2.5
+ROBUST_REWEIGHTING_STEPS = 2
 MAD_TO_SIGMA = 1.4826
 BATCH_SIZE = 2_048
 
@@ -21,12 +22,12 @@ def estimate_normals(
     neighbor_indices: np.ndarray,
     neighbor_distances: np.ndarray,
 ) -> np.ndarray:
-    """Estimate unoriented normals with one-step robust weighted PCA.
+    """Estimate unoriented normals with two-step robust weighted PCA.
 
     An initial Gaussian distance-weighted fit supplies a provisional tangent
-    plane. A Cauchy factor based on each point's normalized point-to-plane
-    residual then limits the covariance leverage of normal-direction outliers,
-    and one final PCA fit produces the normal.
+    plane. Two Cauchy IRLS steps then limit the covariance leverage of points
+    with large normalized point-to-plane residuals, refining the residuals once
+    from the first robust plane before producing the final normal.
     """
     del query_indices
     if neighbor_indices.shape[1] < NEIGHBOR_COUNT:
@@ -60,26 +61,29 @@ def estimate_normals(
             optimize=True,
         )
         _, eigenvectors = np.linalg.eigh(covariance)
-        initial_normals = eigenvectors[:, :, 0]
+        normals = eigenvectors[:, :, 0]
 
-        residuals = np.einsum("nki,ni->nk", centered, initial_normals, optimize=True)
-        residual_median = np.median(residuals, axis=1, keepdims=True)
-        robust_scale = MAD_TO_SIGMA * np.median(
-            np.abs(residuals - residual_median), axis=1, keepdims=True
-        )
         scale_floor = np.finfo(np.float64).eps * np.maximum(radius, 1.0)
-        robust_scale = np.maximum(robust_scale, scale_floor)
-        normalized = residuals / (ROBUST_CUTOFF * robust_scale)
-        robust_weights = 1.0 / (1.0 + normalized * normalized)
+        for _ in range(ROBUST_REWEIGHTING_STEPS):
+            residuals = np.einsum("nki,ni->nk", centered, normals, optimize=True)
+            residual_median = np.median(residuals, axis=1, keepdims=True)
+            robust_scale = MAD_TO_SIGMA * np.median(
+                np.abs(residuals - residual_median), axis=1, keepdims=True
+            )
+            robust_scale = np.maximum(robust_scale, scale_floor)
+            normalized = residuals / (ROBUST_CUTOFF * robust_scale)
+            robust_weights = 1.0 / (1.0 + normalized * normalized)
 
-        weights = distance_weights * robust_weights
-        weights /= weights.sum(axis=1, keepdims=True)
-        centroid = np.einsum("nk,nki->ni", weights, neighborhoods, optimize=True)
-        centered = neighborhoods - centroid[:, None, :]
-        covariance = np.einsum(
-            "nk,nki,nkj->nij", weights, centered, centered, optimize=True
-        )
-        _, eigenvectors = np.linalg.eigh(covariance)
-        estimated[start:stop] = eigenvectors[:, :, 0]
+            weights = distance_weights * robust_weights
+            weights /= weights.sum(axis=1, keepdims=True)
+            centroid = np.einsum("nk,nki->ni", weights, neighborhoods, optimize=True)
+            centered = neighborhoods - centroid[:, None, :]
+            covariance = np.einsum(
+                "nk,nki,nkj->nij", weights, centered, centered, optimize=True
+            )
+            _, eigenvectors = np.linalg.eigh(covariance)
+            normals = eigenvectors[:, :, 0]
+
+        estimated[start:stop] = normals
 
     return estimated
