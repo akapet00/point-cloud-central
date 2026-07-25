@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import numpy as np
 
-NEIGHBOR_COUNT = 112
+NEIGHBOR_COUNT = 160
 DISTANCE_DECAY = 2.0
 ROBUST_CUTOFF = 2.5
 MAD_TO_SIGMA = 1.4826
