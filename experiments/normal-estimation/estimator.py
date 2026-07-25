@@ -9,6 +9,7 @@ from __future__ import annotations
 import numpy as np
 
 NEIGHBOR_COUNT = 112
+FIRST_STATISTIC_COUNT = 64
 FINAL_NEIGHBOR_COUNT = 128
 FINAL_STATISTIC_COUNT = 32
 INITIAL_NEIGHBOR_COUNT = 224
@@ -38,9 +39,10 @@ def estimate_normals(
     """Estimate normals from broad initialization and local robust PCA.
 
     A 224-neighbor Gaussian tail stabilizes the provisional tangent under
-    positional noise. Two Tukey-biweight IRLS steps refine that normal; the
-    final 128-point covariance uses robust location and scale from its nearest
-    32 samples so curved tail points cannot define their own leverage.
+    positional noise. Two Tukey-biweight IRLS steps refine that normal; their
+    112- and 128-point covariances use robust location and scale from the
+    nearest 64 and 32 samples so curved tail points cannot define their own
+    leverage.
     """
     del query_indices
     if neighbor_indices.shape[1] < INITIAL_NEIGHBOR_COUNT:
@@ -80,7 +82,7 @@ def estimate_normals(
 
         scale_floor = np.finfo(np.float64).eps * np.maximum(bandwidth, 1.0)
         refinement_counts = (NEIGHBOR_COUNT, FINAL_NEIGHBOR_COUNT)
-        statistic_counts = (NEIGHBOR_COUNT, FINAL_STATISTIC_COUNT)
+        statistic_counts = (FIRST_STATISTIC_COUNT, FINAL_STATISTIC_COUNT)
         for tukey_cutoff, refinement_count, statistic_count in zip(
             TUKEY_CUTOFFS, refinement_counts, statistic_counts, strict=True
         ):
