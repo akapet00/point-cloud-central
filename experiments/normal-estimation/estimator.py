@@ -10,7 +10,7 @@ import numpy as np
 
 NEIGHBOR_COUNT = 112
 FIRST_REFINEMENT_COUNT = 120
-FIRST_STATISTIC_COUNT = 64
+FIRST_STATISTIC_COUNT = 32
 FINAL_NEIGHBOR_COUNT = 128
 FINAL_STATISTIC_COUNT = 32
 INITIAL_NEIGHBOR_COUNT = 224
@@ -42,7 +42,7 @@ def estimate_normals(
     A 224-neighbor Gaussian tail stabilizes the provisional tangent under
     positional noise. Two Tukey-biweight IRLS steps refine that normal; their
     120- and 128-point covariances use robust location and scale from the
-    nearest 64 and 32 samples so curved tail points cannot define their own
+    nearest 32 samples in each pass so curved tail points cannot define their own
     leverage.
     """
     del query_indices
