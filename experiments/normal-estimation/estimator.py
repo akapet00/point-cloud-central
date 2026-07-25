@@ -8,7 +8,8 @@ from __future__ import annotations
 
 import numpy as np
 
-NEIGHBOR_COUNT = 112
+SUPPORT_COUNT = 224
+KERNEL_RADIUS_NEIGHBOR = 112
 DISTANCE_DECAY = 2.0
 ROBUST_CUTOFF = 2.5
 ROBUST_REWEIGHTING_STEPS = 2
@@ -22,24 +23,23 @@ def estimate_normals(
     neighbor_indices: np.ndarray,
     neighbor_distances: np.ndarray,
 ) -> np.ndarray:
-    """Estimate unoriented normals with two-step robust weighted PCA.
+    """Estimate normals with extended-support robust weighted PCA.
 
-    An initial Gaussian distance-weighted fit supplies a provisional tangent
-    plane. Two Cauchy IRLS steps then limit the covariance leverage of points
-    with large normalized point-to-plane residuals, refining the residuals once
-    from the first robust plane before producing the final normal.
+    A 224-neighbor support retains the 112th-neighbor Gaussian bandwidth,
+    adding a softly decaying tail without broadening the local kernel. Two
+    Cauchy IRLS steps then limit point-to-plane residual leverage.
     """
     del query_indices
-    if neighbor_indices.shape[1] < NEIGHBOR_COUNT:
-        msg = f"At least {NEIGHBOR_COUNT} cached neighbors are required"
+    if neighbor_indices.shape[1] < SUPPORT_COUNT:
+        msg = f"At least {SUPPORT_COUNT} cached neighbors are required"
         raise ValueError(msg)
 
     estimated = np.empty((neighbor_indices.shape[0], 3), dtype=np.float64)
     for start in range(0, neighbor_indices.shape[0], BATCH_SIZE):
         stop = min(start + BATCH_SIZE, neighbor_indices.shape[0])
-        neighborhoods = points[neighbor_indices[start:stop, :NEIGHBOR_COUNT]]
-        distances = neighbor_distances[start:stop, :NEIGHBOR_COUNT]
-        radius = distances[:, -1:]
+        neighborhoods = points[neighbor_indices[start:stop, :SUPPORT_COUNT]]
+        distances = neighbor_distances[start:stop, :SUPPORT_COUNT]
+        radius = distances[:, KERNEL_RADIUS_NEIGHBOR - 1 : KERNEL_RADIUS_NEIGHBOR]
         scaled_squared = np.divide(
             distances * distances,
             radius * radius,
