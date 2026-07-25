@@ -9,6 +9,7 @@ from __future__ import annotations
 import numpy as np
 
 NEIGHBOR_COUNT = 112
+FINAL_BANDWIDTH_NEIGHBOR_COUNT = 108
 REFINEMENT_NEIGHBOR_COUNT = 160
 INITIAL_NEIGHBOR_COUNT = 224
 DISTANCE_DECAY = 2.0
@@ -38,7 +39,7 @@ def estimate_normals(
 
     A 224-neighbor Gaussian tail stabilizes the provisional tangent under
     positional noise. Cauchy IRLS first corrects it on 112 neighbors, then the
-    corrected plane admits a 160-neighbor Gaussian tail for the final fit.
+    final fit uses 160 neighbors tapered at the 108th-neighbor radius.
     """
     del query_indices
     if neighbor_indices.shape[1] < INITIAL_NEIGHBOR_COUNT:
@@ -77,12 +78,31 @@ def estimate_normals(
         normals = eigenvectors[:, :, 0]
 
         scale_floor = np.finfo(np.float64).eps * np.maximum(bandwidth, 1.0)
+        final_distances = initial_distances[:, :REFINEMENT_NEIGHBOR_COUNT]
+        final_bandwidth = initial_distances[
+            :, FINAL_BANDWIDTH_NEIGHBOR_COUNT - 1 : FINAL_BANDWIDTH_NEIGHBOR_COUNT
+        ]
+        final_scaled_squared = np.divide(
+            final_distances * final_distances,
+            final_bandwidth * final_bandwidth,
+            out=np.zeros_like(final_distances, dtype=np.float64),
+            where=final_bandwidth > 0.0,
+        )
+        final_distance_weights = np.exp(-DISTANCE_DECAY * final_scaled_squared)
+
         refinement_sizes = (NEIGHBOR_COUNT, REFINEMENT_NEIGHBOR_COUNT)
-        for robust_cutoff, refinement_size in zip(
-            ROBUST_CUTOFFS, refinement_sizes, strict=True
+        distance_weight_sets = (
+            initial_weights[:, :NEIGHBOR_COUNT],
+            final_distance_weights,
+        )
+        for robust_cutoff, refinement_size, raw_distance_weights in zip(
+            ROBUST_CUTOFFS,
+            refinement_sizes,
+            distance_weight_sets,
+            strict=True,
         ):
             neighborhoods = initial_neighborhoods[:, :refinement_size]
-            distance_weights = initial_weights[:, :refinement_size].copy()
+            distance_weights = raw_distance_weights.copy()
             distance_weights /= distance_weights.sum(axis=1, keepdims=True)
             centered = neighborhoods - centroid[:, None, :]
             residuals = np.einsum("nki,ni->nk", centered, normals, optimize=True)
