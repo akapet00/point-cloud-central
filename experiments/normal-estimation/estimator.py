@@ -13,6 +13,7 @@ INITIAL_NEIGHBOR_COUNT = 224
 DISTANCE_DECAY = 2.0
 ROBUST_CUTOFFS = (2.5, 1.5)
 MAD_TO_SIGMA = 1.4826
+JET_RIDGE = 1e-6
 BATCH_SIZE = 2_048
 
 
@@ -33,13 +34,13 @@ def estimate_normals(
     neighbor_indices: np.ndarray,
     neighbor_distances: np.ndarray,
 ) -> np.ndarray:
-    """Estimate normals from broad initialization and local robust PCA.
+    """Estimate normals with robust PCA followed by a quadratic local jet.
 
-    A 224-neighbor Gaussian tail stabilizes the provisional tangent under
-    positional noise. Two Cauchy IRLS steps then refine that normal using only
-    the query-local 112-neighbor patch, limiting broad-neighborhood bias.
+    A broad Gaussian PCA stabilizes the provisional tangent under noise, and
+    two local Cauchy refinements limit outlier leverage. A weighted quadratic
+    height fit in the final PCA frame then separates curvature from the linear
+    slope at the query.
     """
-    del query_indices
     if neighbor_indices.shape[1] < INITIAL_NEIGHBOR_COUNT:
         msg = f"At least {INITIAL_NEIGHBOR_COUNT} cached neighbors are required"
         raise ValueError(msg)
@@ -100,6 +101,46 @@ def estimate_normals(
             _, eigenvectors = np.linalg.eigh(covariance)
             normals = eigenvectors[:, :, 0]
 
+        query_points = points[query_indices[start:stop]]
+        offsets = neighborhoods - query_points[:, None, :]
+        safe_bandwidth = np.maximum(bandwidth, np.finfo(np.float64).eps)
+        tangent_x = eigenvectors[:, :, 1]
+        tangent_y = eigenvectors[:, :, 2]
+        local_x = (
+            np.einsum("nki,ni->nk", offsets, tangent_x, optimize=True) / safe_bandwidth
+        )
+        local_y = (
+            np.einsum("nki,ni->nk", offsets, tangent_y, optimize=True) / safe_bandwidth
+        )
+        local_z = (
+            np.einsum("nki,ni->nk", offsets, normals, optimize=True) / safe_bandwidth
+        )
+        design = np.stack(
+            (
+                np.ones_like(local_x),
+                local_x,
+                local_y,
+                local_x * local_x,
+                local_x * local_y,
+                local_y * local_y,
+            ),
+            axis=2,
+        )
+        normal_matrix = np.einsum(
+            "nk,nki,nkj->nij", weights, design, design, optimize=True
+        )
+        normal_matrix += JET_RIDGE * np.eye(6)[None, :, :]
+        right_hand_side = np.einsum(
+            "nk,nki,nk->ni", weights, design, local_z, optimize=True
+        )
+        coefficients = np.linalg.solve(normal_matrix, right_hand_side)
+
+        normals = (
+            normals
+            - coefficients[:, 1, None] * tangent_x
+            - coefficients[:, 2, None] * tangent_y
+        )
+        normals /= np.linalg.norm(normals, axis=1, keepdims=True)
         estimated[start:stop] = normals
 
     return estimated
