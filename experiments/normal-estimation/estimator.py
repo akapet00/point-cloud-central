@@ -17,6 +17,8 @@ DISTANCE_DECAY = 2.0
 TUKEY_CUTOFFS = (4.15, 2.77, 2.77)
 THIRD_REFINEMENT_MAX_THICKNESS = 0.1
 THIRD_NORMAL_EXTRAPOLATION = 0.8
+VERY_THICK_SHEET_MIN_THICKNESS = 0.2
+VERY_THICK_SHEET_BROAD_NORMAL_BLEND = 0.05
 MAD_TO_SIGMA = 1.4826
 BATCH_SIZE = 2_048
 
@@ -43,7 +45,7 @@ def estimate_normals(
     A 224-neighbor Gaussian tail stabilizes the provisional tangent under
     positional noise. Two Tukey-biweight IRLS steps refine that normal using
     query-local residual statistics. A third step is accepted only for a thin
-    local sheet, where another redescending fit is unlikely to reject noise.
+    local sheet; very thick patches instead borrow slight broad-scale stability.
     """
     del query_indices
     if neighbor_indices.shape[1] < INITIAL_NEIGHBOR_COUNT:
@@ -80,6 +82,7 @@ def estimate_normals(
         )
         _, eigenvectors = np.linalg.eigh(covariance)
         normals = eigenvectors[:, :, 0]
+        broad_normals = normals.copy()
 
         scale_floor = np.finfo(np.float64).eps * np.maximum(bandwidth, 1.0)
         refinement_counts = (
@@ -133,7 +136,21 @@ def estimate_normals(
                     aligned_normals - normals
                 )
                 extrapolated /= np.linalg.norm(extrapolated, axis=1, keepdims=True)
-                normals = np.where(thin_sheet, extrapolated, normals)
+
+                broad_dot = np.einsum(
+                    "ni,ni->n", broad_normals, normals, optimize=True
+                )[:, None]
+                aligned_broad = broad_normals * np.where(broad_dot < 0.0, -1.0, 1.0)
+                broad_blend = (
+                    1.0 - VERY_THICK_SHEET_BROAD_NORMAL_BLEND
+                ) * normals + VERY_THICK_SHEET_BROAD_NORMAL_BLEND * aligned_broad
+                broad_blend /= np.linalg.norm(broad_blend, axis=1, keepdims=True)
+                very_thick = robust_scale >= VERY_THICK_SHEET_MIN_THICKNESS * bandwidth
+                normals = np.where(
+                    thin_sheet,
+                    extrapolated,
+                    np.where(very_thick, broad_blend, normals),
+                )
             else:
                 normals = refined_normals
 
