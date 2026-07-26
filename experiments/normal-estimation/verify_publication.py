@@ -11,6 +11,15 @@ EXPERIMENT_DIR = Path(__file__).resolve().parent
 REPO_ROOT = EXPERIMENT_DIR.parents[1]
 PUBLICATION_DIR = EXPERIMENT_DIR / "publication" / "run-01"
 RELEASE_TAG = "normal-estimation-study-v1"
+EXPECTED_FIGURE_FILES = (
+    "accuracy-runtime.png",
+    "benchmark-comparison.png",
+    "bootstrap-deltas-blog.png",
+    "condition-progress.png",
+    "qualitative-errors-blog.png",
+    "search-progress.png",
+    "validation-progress.png",
+)
 
 
 def git(*arguments: str) -> str:
@@ -27,6 +36,15 @@ def main() -> None:
         actual = hashlib.sha256((PUBLICATION_DIR / name).read_bytes()).hexdigest()
         if actual != expected:
             raise RuntimeError(f"Checksum mismatch for {name}: {actual} != {expected}")
+
+    figure_dir = PUBLICATION_DIR / "figures"
+    missing_figures = [
+        name for name in EXPECTED_FIGURE_FILES if not (figure_dir / name).is_file()
+    ]
+    if missing_figures:
+        raise RuntimeError(
+            "Missing publication-ready figures: " + ", ".join(missing_figures)
+        )
 
     record_count = sum(
         bool(line.strip())
@@ -65,7 +83,8 @@ def main() -> None:
     print(
         f"Verified {record_count} records, "
         f"{len(provenance['checksums_sha256'])} checksums, "
-        f"and {sum(record.get('candidate_commit') is not None for record in records[1:])} "
+        f"{len(EXPECTED_FIGURE_FILES)} publication figures, and "
+        f"{sum(record.get('candidate_commit') is not None for record in records[1:])} "
         "candidate refs."
     )
 

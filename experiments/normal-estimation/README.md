@@ -121,7 +121,7 @@ PFF-Net reports:
 
 The published PCA row uses CGAL and is a protocol check rather than a bit-for-bit NumPy baseline.
 
-The final analysis notebook at `notebooks/03-normal-estimation-search/main.ipynb` rebuilds the search summary from the tracked publication snapshot, visualizes all attempts without overcrowding, reports per-condition progress and the accuracy-runtime frontier, and compares the frozen official-test result with published PCPNet references.
+The final analysis notebook at `notebooks/03-normal-estimation-search/main.ipynb` rebuilds the search summary from the tracked publication snapshot, visualizes all attempts without overcrowding, reports per-condition progress and the accuracy-runtime frontier, and compares the frozen official-test result with representative references from the PFF-Net PCPNet table. It writes publication-ready figures with article-scale typography to `publication/run-01/figures/`.
 
 ## References
 
