@@ -15,14 +15,14 @@ A collection of point-cloud processing experiments. Educational explorations rem
 | [Geometry feature extraction](notebooks/00-geometry-feature-extraction/main.ipynb) | Preprocessing, PCA-based geometric features, plane segmentation, and surface-area estimation for mobile laser scanning data. |
 | [Optimal neighborhood](notebooks/01-optimal-neighborhood/main.ipynb) | Eigenentropy-based neighborhood selection and point-normal evaluation on the Stanford Bunny. |
 | [Surface-point extraction](notebooks/02-surface-points-extraction/main.ipynb) | Query-point classification and boundary extraction from synthetic point clouds. |
-| [Normal-estimation research progress](notebooks/03-normal-estimation-search/main.ipynb) | Autoresearch-style RMSE progress, per-condition trends, and the accuracy-runtime frontier. |
+| [Normal-estimation final analysis](notebooks/03-normal-estimation-search/main.ipynb) | Complete search history, controlled test comparison, uncertainty, per-condition trends, and runtime trade-offs. |
 
 ## Setup
 
 The project requires Python 3.12 and uses [uv](https://docs.astral.sh/uv/):
 
 ```bash
-uv sync --dev
+uv sync --locked --dev
 uv run jupyter lab
 ```
 

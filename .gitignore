@@ -2,7 +2,6 @@ __pycache__/
 .ipynb_checkpoints/
 .ruff_cache/
 .venv/
-uv.lock
 progress.png
 final-comparison.png
 
@@ -21,5 +20,3 @@ experiments/normal-estimation/*.log
 experiments/normal-estimation/development*.json
 experiments/normal-estimation/validation*.json
 experiments/normal-estimation/test*.json
-experiments/normal-estimation/publication/run-01/progress.png
-experiments/normal-estimation/publication/run-01/final-comparison.png

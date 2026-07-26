@@ -11,7 +11,6 @@ const allowed = new Set([
   "results.tsv",
   "notes.md",
   "condition-memory.md",
-  "batch-strategy.md",
   "estimator.py",
   "proposal.json",
 ]);

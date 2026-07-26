@@ -25,9 +25,8 @@ Normal orientation is outside this experiment's scope.
 | `estimator.py` | Complete candidate algorithm | **Editable** |
 | `agent-tools.ts` | Path-scoped read/edit tools for isolated Pi invocations | Read-only |
 | `iteration.md` | Instructions for one bounded Pi invocation | Read-only |
-| `batch-strategy.md` | Ordered hypotheses and batch stopping rules | Read-only |
 | `loop.py` | Fresh-process controller | Read-only |
-| `manage.py`, `loop.py`, `summarize_notes.py` | Trusted initialization, evaluation, decisions, and records | Read-only |
+| `manage.py`, `summarize_notes.py` | Trusted initialization and generated research memory | Read-only |
 | `prepare.py` | Download and cache PCPNet | Read-only |
 | `run.py`, `worker.py` | Isolated prediction runner | Read-only |
 | `evaluate.py` | Protected scoring | Read-only |
@@ -35,13 +34,12 @@ Normal orientation is outside this experiment's scope.
 | `state.json`, `results.tsv` | Regenerated views of canonical records | Generated, untracked |
 | `notes.md` | Concise cross-iteration research knowledge and failure stages | Generated, untracked |
 | `condition-memory.md` | Per-condition frontier and candidate trade-offs | Generated, untracked |
-| `final-results.json` | Frozen finalist's complete official-test metrics | Generated once, tracked |
-| `baseline-test-results.json` | Same-harness fixed-PCA official-test metrics | Generated once, tracked |
-| `bootstrap-results.json` | Paired shape-level bootstrap intervals | Generated once, tracked |
-| `publication/run-01/` | Tracked records, condition history, metrics, and provenance | Frozen snapshot |
+| `publication/run-01/` | Records, condition history, test metrics, uncertainty, and provenance | Frozen snapshot |
+| `export_publication.py` | Rebuild the snapshot from canonical local records and test metrics | Read-only |
+| `verify_publication.py` | Verify snapshot checksums, estimator hash, record count, and Git refs | Read-only |
 | `agent-logs/` | Full output from each Pi process | Generated, untracked |
 
-The baseline estimator is fixed-neighborhood PCA with 112 nearest neighbors.
+The completed search began from fixed-neighborhood PCA with 112 nearest neighbors. The tracked `estimator.py` is the frozen finalist from iteration 279.
 
 ## Dataset setup
 
@@ -67,64 +65,39 @@ uv run evaluate.py --tier validation --json validation.json
 
 `run.py` gives editable code anonymous, label-free inputs. On macOS it applies an OS sandbox that blocks raw data, references, protected source, other tiers, prior results, network access, and writes outside predictions. `evaluate.py` never imports editable code.
 
-The test tier is absent from prediction and evaluation CLIs. It requires a separate human-controlled procedure after finalists are frozen. This search's one-time finalist result is preserved in `final-results.json`; do not overwrite it with a later candidate. The original fixed-PCA estimator was evaluated afterward, without further model selection, to provide the controlled comparison in `baseline-test-results.json`.
+The test tier is absent from prediction and evaluation CLIs. It requires a separate human-controlled procedure after finalists are frozen. The one-time finalist and controlled fixed-PCA results are preserved under `publication/run-01/`; do not overwrite them. The original fixed-PCA estimator was evaluated afterward, without further model selection, to provide the controlled comparison.
 
 The primary score is `rmse` (lower is better). JSON output also contains per-condition RMSE and PGP. Reported runtime includes estimator import, predictions, and prediction writes, but excludes prepared neighbor search.
 
-## Running the search
+## Completed study and reproducibility
 
-First commit this harness on a clean baseline branch. Create a research branch, then initialize its local records:
+The search is complete. The frozen release is tagged `normal-estimation-study-v1`, and the retained estimator is iteration 279.
+
+The tracked publication snapshot under `publication/run-01/` contains all 323 canonical records, aggregate and per-condition history, controlled baseline and finalist test metrics, paired bootstrap intervals, checksums, and provenance. The final analysis notebook consumes this snapshot and runs without the PCPNet dataset; the optional qualitative figure is regenerated only when local test data are available and `estimator.py` matches the frozen hash.
+
+To verify the tracked analysis from the repository root:
 
 ```bash
-git switch -c research/normal-estimation-01
+uv sync --locked --dev
+uv run ruff check experiments notebooks
+uv run ruff format --check experiments notebooks
+uv run experiments/normal-estimation/verify_publication.py
+uv run jupyter nbconvert \
+  --to notebook \
+  --execute notebooks/03-normal-estimation-search/main.ipynb \
+  --output /tmp/normal-estimation-analysis.ipynb
+```
+
+The original autonomous loop remains in the release for auditability. Starting a new search from the frozen branch is intentionally unsupported because `estimator.py` is no longer the fixed-PCA baseline. Create a fresh branch from the original harness commit `b787b40` or adapt the initialization protocol explicitly.
+
+To rebuild the publication snapshot from preserved local records and test metrics:
+
+```bash
 cd experiments/normal-estimation
-uv run manage.py init
+uv run export_publication.py
 ```
 
-Run a small pilot with five fresh Pi contexts:
-
-```bash
-caffeinate -ims uv run loop.py --max-iterations 5
-```
-
-Inspect progress:
-
-```bash
-uv run manage.py status
-column -ts $'\t' results.tsv
-```
-
-Continue without an iteration limit:
-
-```bash
-caffeinate -ims uv run loop.py
-```
-
-Request a graceful stop after the current Pi invocation:
-
-```bash
-uv run manage.py stop
-```
-
-Clear the stop request before resuming:
-
-```bash
-uv run manage.py resume
-caffeinate -ims uv run loop.py
-```
-
-Each measured candidate receives a durable `normal-search/NNNN` Git tag, including discarded attempts. The controller writes one canonical record only after restoring the chosen frontier; state, TSV, notes, and per-condition memory can be rebuilt from those records. Agent edits receive automatic Ruff safe fixes and formatting before evaluation. Failures retain the exact stage, command status, and a bounded diagnostic in the canonical record; repeated crashes stop the loop for review.
-
-Optional controller flags:
-
-```text
---max-iterations N   maximum fresh Pi launches
---model PATTERN      Pi model pattern
---thinking LEVEL     defaults to high
---delay SECONDS      delay between launches
-```
-
-Each launch uses `pi --no-session --print` with `PI_OFFLINE=1`, no context files, auto-discovered extensions, skills, templates, or built-in tools. A small explicit extension exposes path-scoped reads and exact replacements only inside an isolated workspace. Pi has no prior conversation session and only proposes one edit plus metadata; trusted controller code owns Git, linting, evaluation, validation, decisions, rollback, tagging, and canonical records. Knowledge survives through records, regenerated views, per-condition memory, the tracked batch strategy, durable Git tags, and logs.
+Candidate commits referenced by records are preserved by the `normal-search/NNNN` tags. Publish those tags together with the release tag when mirroring the full study history.
 
 ## Simplicity standard
 
@@ -148,7 +121,7 @@ PFF-Net reports:
 
 The published PCA row uses CGAL and is a protocol check rather than a bit-for-bit NumPy baseline.
 
-The final analysis notebook at `notebooks/03-normal-estimation-search/main.ipynb` rebuilds the search summary from canonical records, visualizes all attempts without overcrowding, reports per-condition progress and the accuracy-runtime frontier, and compares the frozen official-test result with published PCPNet references.
+The final analysis notebook at `notebooks/03-normal-estimation-search/main.ipynb` rebuilds the search summary from the tracked publication snapshot, visualizes all attempts without overcrowding, reports per-condition progress and the accuracy-runtime frontier, and compares the frozen official-test result with published PCPNet references.
 
 ## References
 

@@ -49,9 +49,11 @@
   },
   "checksums_sha256": {
     "baseline-test-results.json": "341f074a1c667b2b5a3805f2af30acccbed4e7759533fad3202a94933a2ff9af",
-    "bootstrap-results.json": "63ae3205689a5231c7e6496d45e90983725a6749a5965380f11b03e7f7c28a27",
+    "bootstrap-deltas.png": "f1897afd9dc14aa5d794a4eb6728e1b7609d60e8a4d9e78b8a481415c02fc1d9",
+    "bootstrap-results.json": "296512d3b261a69c258e87a6b3c85f66f8276ae41c645410f5a92a9a89ee51fc",
     "condition-results.tsv": "a45148a529546c027cb12a1a610ece7e8a40e1eadb7290e12c13be2868caf057",
     "final-results.json": "3e7b8a2e8de3a78878d1452f5a9b5b511e3924f950ea3e4d91b9615a6162999c",
+    "qualitative-errors.png": "bc08459182c51c19f50821acf67e28ebba51b78360fa2273c8c3d4d65c8c4127",
     "records.jsonl": "c13ff340b1b43dabb832376ac652f9e97fccd69fce02c4450740b477dba13a2c",
     "results.tsv": "03a2eaed020cc27fde8ba3d7f446acba2ddf034ae07cc5ec1e8d93b54f71d96c"
   },

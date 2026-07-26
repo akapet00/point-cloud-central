@@ -94,7 +94,7 @@ def build_notes(records: list[dict[str, object]]) -> str:
             "## Guidance",
             "",
             "- Read condition-memory.md before choosing the next hypothesis.",
-            "- Follow batch-strategy.md; make one independently ablatable change.",
+            "- Make one independently ablatable change per experiment.",
             "- Avoid repeating descriptions already listed above.",
             "- Use results.tsv for complete quantitative history.",
             "",

@@ -45,7 +45,6 @@ AGENT_READ_FILES = (
     "results.tsv",
     "notes.md",
     "condition-memory.md",
-    "batch-strategy.md",
     "README.md",
     "iteration.md",
 )

@@ -1,7 +1,7 @@
 [project]
 name = "point-cloud-central"
 version = "0.1.0"
-description = "Standalone notebooks for experimenting with point-cloud processing techniques."
+description = "Reproducible point-cloud processing notebooks and command-line experiments."
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [

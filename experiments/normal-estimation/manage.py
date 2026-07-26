@@ -50,7 +50,17 @@ def evaluate(tier: str) -> dict[str, object]:
 
 
 def initialize() -> None:
-    """Measure and record the clean baseline."""
+    """Measure and record a new search baseline."""
+    baseline_description = "fixed k=112 PCA"
+    expected_hash = "95d82614e94ad4391cb0475805fa458403a49475256379f8f4ee34d0acb04f1f"
+    estimator_hash = hashlib.sha256(
+        (EXPERIMENT_DIR / "estimator.py").read_bytes()
+    ).hexdigest()
+    if estimator_hash != expected_hash:
+        raise SystemExit(
+            "Initialization requires the original fixed-k PCA estimator. "
+            "Start from harness commit b787b40 or provide a new baseline protocol."
+        )
     if git("status", "--porcelain"):
         raise SystemExit("Working tree must be clean before initialization")
     if RECORD_DIR.exists() or any(
@@ -85,7 +95,7 @@ def initialize() -> None:
         "memory_mb": development["peak_memory_mb"],
         "status": "keep",
         "complexity": "baseline",
-        "description": "fixed k=112 PCA",
+        "description": baseline_description,
         "rationale": "local covariance tangent plane",
         "source": "Hoppe1992",
         "kind": "parameter",
