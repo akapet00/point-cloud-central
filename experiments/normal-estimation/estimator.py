@@ -16,6 +16,7 @@ INITIAL_NEIGHBOR_COUNT = 224
 DISTANCE_DECAY = 2.0
 TUKEY_CUTOFFS = (4.15, 2.77, 2.77)
 THIRD_REFINEMENT_MAX_THICKNESS = 0.1
+QUERY_CONFIDENCE_WEIGHT = 0.875
 MAD_TO_SIGMA = 1.4826
 BATCH_SIZE = 2_048
 
@@ -44,7 +45,6 @@ def estimate_normals(
     query-local residual statistics. A third step is accepted only for a thin
     local sheet, where another redescending fit is unlikely to reject noise.
     """
-    del query_indices
     if neighbor_indices.shape[1] < INITIAL_NEIGHBOR_COUNT:
         msg = f"At least {INITIAL_NEIGHBOR_COUNT} cached neighbors are required"
         raise ValueError(msg)
@@ -106,6 +106,24 @@ def estimate_normals(
                 np.abs(statistic_residuals - residual_median), statistic_weights
             )
             robust_scale = np.maximum(robust_scale, scale_floor)
+            confidence_scale = robust_scale
+            if step == 2:
+                confidence_weights = statistic_weights.copy()
+                statistic_neighbors = neighbor_indices[start:stop, :statistic_count]
+                is_query = statistic_neighbors == query_indices[start:stop, None]
+                confidence_weights = np.where(
+                    is_query,
+                    QUERY_CONFIDENCE_WEIGHT * confidence_weights,
+                    confidence_weights,
+                )
+                confidence_median = _weighted_median(
+                    statistic_residuals, confidence_weights
+                )
+                confidence_scale = MAD_TO_SIGMA * _weighted_median(
+                    np.abs(statistic_residuals - confidence_median),
+                    confidence_weights,
+                )
+                confidence_scale = np.maximum(confidence_scale, scale_floor)
             normalized = (residuals - residual_median) / (tukey_cutoff * robust_scale)
             inside = normalized * normalized < 1.0
             robust_weights = np.square(1.0 - normalized * normalized) * inside
@@ -123,7 +141,9 @@ def estimate_normals(
             _, eigenvectors = np.linalg.eigh(covariance)
             refined_normals = eigenvectors[:, :, 0]
             if step == 2:
-                thin_sheet = robust_scale <= THIRD_REFINEMENT_MAX_THICKNESS * bandwidth
+                thin_sheet = (
+                    confidence_scale <= THIRD_REFINEMENT_MAX_THICKNESS * bandwidth
+                )
                 normals = np.where(thin_sheet, refined_normals, normals)
             else:
                 normals = refined_normals
