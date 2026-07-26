@@ -42,7 +42,7 @@ def estimate_normals(
     A 224-neighbor Gaussian tail stabilizes the provisional tangent under
     positional noise. Two Tukey-biweight IRLS steps refine that normal using
     query-local residual statistics. A third step is accepted only for a thin
-    local sheet, where another redescending fit is unlikely to reject noise.
+    local sheet when it also sharpens separation of normal and tangent variance.
     """
     del query_indices
     if neighbor_indices.shape[1] < INITIAL_NEIGHBOR_COUNT:
@@ -77,9 +77,15 @@ def estimate_normals(
             initial_centered,
             optimize=True,
         )
-        _, eigenvectors = np.linalg.eigh(covariance)
+        eigenvalues, eigenvectors = np.linalg.eigh(covariance)
         normals = eigenvectors[:, :, 0]
 
+        normal_ambiguity = np.divide(
+            np.maximum(eigenvalues[:, 0:1], 0.0),
+            eigenvalues[:, 1:2],
+            out=np.ones_like(eigenvalues[:, 0:1]),
+            where=eigenvalues[:, 1:2] > 0.0,
+        )
         scale_floor = np.finfo(np.float64).eps * np.maximum(bandwidth, 1.0)
         refinement_counts = (
             NEIGHBOR_COUNT,
@@ -120,13 +126,23 @@ def estimate_normals(
                 neighborhoods - centroid[:, None, :],
                 optimize=True,
             )
-            _, eigenvectors = np.linalg.eigh(covariance)
+            eigenvalues, eigenvectors = np.linalg.eigh(covariance)
             refined_normals = eigenvectors[:, :, 0]
+            refined_ambiguity = np.divide(
+                np.maximum(eigenvalues[:, 0:1], 0.0),
+                eigenvalues[:, 1:2],
+                out=np.ones_like(eigenvalues[:, 0:1]),
+                where=eigenvalues[:, 1:2] > 0.0,
+            )
             if step == 2:
                 thin_sheet = robust_scale <= THIRD_REFINEMENT_MAX_THICKNESS * bandwidth
-                normals = np.where(thin_sheet, refined_normals, normals)
+                sharper_normal = refined_ambiguity < normal_ambiguity
+                normals = np.where(
+                    thin_sheet & sharper_normal, refined_normals, normals
+                )
             else:
                 normals = refined_normals
+                normal_ambiguity = refined_ambiguity
 
         estimated[start:stop] = normals
 
