@@ -14,9 +14,10 @@ FINAL_NEIGHBOR_COUNT = 128
 FINAL_STATISTIC_COUNT = 32
 INITIAL_NEIGHBOR_COUNT = 224
 DISTANCE_DECAY = 2.0
-TUKEY_CUTOFFS = (4.15, 2.77, 2.77)
+TUKEY_CUTOFFS = (4.15, 2.77, 2.77, 2.77)
 THIRD_REFINEMENT_MAX_THICKNESS = 0.1
 THIRD_NORMAL_EXTRAPOLATION = 0.8
+FOURTH_CONTINUATION_BLEND = 0.5
 MAD_TO_SIGMA = 1.4826
 BATCH_SIZE = 2_048
 
@@ -42,8 +43,8 @@ def estimate_normals(
 
     A 224-neighbor Gaussian tail stabilizes the provisional tangent under
     positional noise. Two Tukey-biweight IRLS steps refine that normal using
-    query-local residual statistics. A third step is accepted only for a thin
-    local sheet, where another redescending fit is unlikely to reject noise.
+    query-local residual statistics. Thin sheets receive an extrapolated third
+    step and a half-strength continuation toward a fourth robust step.
     """
     del query_indices
     if neighbor_indices.shape[1] < INITIAL_NEIGHBOR_COUNT:
@@ -86,9 +87,11 @@ def estimate_normals(
             NEIGHBOR_COUNT,
             FINAL_NEIGHBOR_COUNT,
             FINAL_NEIGHBOR_COUNT,
+            FINAL_NEIGHBOR_COUNT,
         )
         statistic_counts = (
             FIRST_STATISTIC_COUNT,
+            FINAL_STATISTIC_COUNT,
             FINAL_STATISTIC_COUNT,
             FINAL_STATISTIC_COUNT,
         )
@@ -125,15 +128,40 @@ def estimate_normals(
             refined_normals = eigenvectors[:, :, 0]
             if step == 2:
                 thin_sheet = robust_scale <= THIRD_REFINEMENT_MAX_THICKNESS * bandwidth
-                dot = np.einsum("ni,ni->n", refined_normals, normals, optimize=True)[
-                    :, None
-                ]
-                aligned_normals = refined_normals * np.where(dot < 0.0, -1.0, 1.0)
-                extrapolated = aligned_normals + THIRD_NORMAL_EXTRAPOLATION * (
-                    aligned_normals - normals
+                two_step_normals = normals
+                dot = np.einsum(
+                    "ni,ni->n", refined_normals, two_step_normals, optimize=True
+                )[:, None]
+                third_normals = refined_normals * np.where(dot < 0.0, -1.0, 1.0)
+                frontier_normals = third_normals + THIRD_NORMAL_EXTRAPOLATION * (
+                    third_normals - two_step_normals
                 )
-                extrapolated /= np.linalg.norm(extrapolated, axis=1, keepdims=True)
-                normals = np.where(thin_sheet, extrapolated, normals)
+                frontier_normals /= np.linalg.norm(
+                    frontier_normals, axis=1, keepdims=True
+                )
+                normals = third_normals
+            elif step == 3:
+                dot = np.einsum(
+                    "ni,ni->n", refined_normals, third_normals, optimize=True
+                )[:, None]
+                fourth_normals = refined_normals * np.where(dot < 0.0, -1.0, 1.0)
+                continued_normals = fourth_normals + THIRD_NORMAL_EXTRAPOLATION * (
+                    fourth_normals - third_normals
+                )
+                continued_normals /= np.linalg.norm(
+                    continued_normals, axis=1, keepdims=True
+                )
+                agreement = np.einsum(
+                    "ni,ni->n", continued_normals, frontier_normals, optimize=True
+                )[:, None]
+                continued_normals *= np.where(agreement < 0.0, -1.0, 1.0)
+                blended_normals = (
+                    1.0 - FOURTH_CONTINUATION_BLEND
+                ) * frontier_normals + FOURTH_CONTINUATION_BLEND * continued_normals
+                blended_normals /= np.linalg.norm(
+                    blended_normals, axis=1, keepdims=True
+                )
+                normals = np.where(thin_sheet, blended_normals, two_step_normals)
             else:
                 normals = refined_normals
 
