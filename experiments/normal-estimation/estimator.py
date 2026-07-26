@@ -17,6 +17,7 @@ DISTANCE_DECAY = 2.0
 TUKEY_CUTOFFS = (4.15, 2.77, 2.77)
 THIRD_REFINEMENT_MAX_THICKNESS = 0.1
 THIRD_NORMAL_EXTRAPOLATION = 0.8
+THIRD_EXTRAPOLATION_MAX_ANGLE = np.deg2rad(5.0)
 MAD_TO_SIGMA = 1.4826
 BATCH_SIZE = 2_048
 
@@ -129,9 +130,17 @@ def estimate_normals(
                     :, None
                 ]
                 aligned_normals = refined_normals * np.where(dot < 0.0, -1.0, 1.0)
-                extrapolated = aligned_normals + THIRD_NORMAL_EXTRAPOLATION * (
-                    aligned_normals - normals
+                extrapolation = THIRD_NORMAL_EXTRAPOLATION * (aligned_normals - normals)
+                extrapolation_norm = np.linalg.norm(
+                    extrapolation, axis=1, keepdims=True
                 )
+                max_extrapolation = 2.0 * np.sin(0.5 * THIRD_EXTRAPOLATION_MAX_ANGLE)
+                extrapolation *= np.minimum(
+                    1.0,
+                    max_extrapolation
+                    / np.maximum(extrapolation_norm, np.finfo(np.float64).eps),
+                )
+                extrapolated = aligned_normals + extrapolation
                 extrapolated /= np.linalg.norm(extrapolated, axis=1, keepdims=True)
                 normals = np.where(thin_sheet, extrapolated, normals)
             else:
