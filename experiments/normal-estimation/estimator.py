@@ -42,7 +42,7 @@ def estimate_normals(
     A 224-neighbor Gaussian tail stabilizes the provisional tangent under
     positional noise. Two Tukey-biweight IRLS steps refine that normal using
     query-local residual statistics. A third step is accepted only for a thin
-    local sheet, where another redescending fit is unlikely to reject noise.
+    local sheet whose rank-interleaved halves resolve the proposed correction.
     """
     del query_indices
     if neighbor_indices.shape[1] < INITIAL_NEIGHBOR_COUNT:
@@ -123,8 +123,54 @@ def estimate_normals(
             _, eigenvectors = np.linalg.eigh(covariance)
             refined_normals = eigenvectors[:, :, 0]
             if step == 2:
+                # A correction is resolvable only when rank-interleaved halves
+                # agree more closely than the proposed normal update.
+                half_normals = []
+                half_masses = []
+                for offset in (0, 1):
+                    half_neighborhoods = neighborhoods[:, offset::2]
+                    half_weights = weights[:, offset::2]
+                    half_mass = half_weights.sum(axis=1, keepdims=True)
+                    half_weights = np.divide(
+                        half_weights,
+                        half_mass,
+                        out=np.zeros_like(half_weights),
+                        where=half_mass > 0.0,
+                    )
+                    half_centroid = np.einsum(
+                        "nk,nki->ni",
+                        half_weights,
+                        half_neighborhoods,
+                        optimize=True,
+                    )
+                    half_centered = half_neighborhoods - half_centroid[:, None, :]
+                    half_covariance = np.einsum(
+                        "nk,nki,nkj->nij",
+                        half_weights,
+                        half_centered,
+                        half_centered,
+                        optimize=True,
+                    )
+                    _, half_eigenvectors = np.linalg.eigh(half_covariance)
+                    half_normals.append(half_eigenvectors[:, :, 0])
+                    half_masses.append(half_mass)
+
+                split_agreement = np.abs(
+                    np.einsum(
+                        "ni,ni->n", half_normals[0], half_normals[1], optimize=True
+                    )
+                )[:, None]
+                update_agreement = np.abs(
+                    np.einsum("ni,ni->n", normals, refined_normals, optimize=True)
+                )[:, None]
+                supported_halves = (half_masses[0] > 0.0) & (half_masses[1] > 0.0)
+                resolvable_update = supported_halves & (
+                    split_agreement >= update_agreement
+                )
                 thin_sheet = robust_scale <= THIRD_REFINEMENT_MAX_THICKNESS * bandwidth
-                normals = np.where(thin_sheet, refined_normals, normals)
+                normals = np.where(
+                    thin_sheet & resolvable_update, refined_normals, normals
+                )
             else:
                 normals = refined_normals
 
