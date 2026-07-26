@@ -44,7 +44,6 @@ def estimate_normals(
     query-local residual statistics. A third step is accepted only for a thin
     local sheet, where another redescending fit is unlikely to reject noise.
     """
-    del query_indices
     if neighbor_indices.shape[1] < INITIAL_NEIGHBOR_COUNT:
         msg = f"At least {INITIAL_NEIGHBOR_COUNT} cached neighbors are required"
         raise ValueError(msg)
@@ -52,6 +51,7 @@ def estimate_normals(
     estimated = np.empty((neighbor_indices.shape[0], 3), dtype=np.float64)
     for start in range(0, neighbor_indices.shape[0], BATCH_SIZE):
         stop = min(start + BATCH_SIZE, neighbor_indices.shape[0])
+        batch_query_indices = query_indices[start:stop]
         initial_neighborhoods = points[
             neighbor_indices[start:stop, :INITIAL_NEIGHBOR_COUNT]
         ]
@@ -100,7 +100,12 @@ def estimate_normals(
             centered = neighborhoods - centroid[:, None, :]
             residuals = np.einsum("nki,ni->nk", centered, normals, optimize=True)
             statistic_residuals = residuals[:, :statistic_count]
-            statistic_weights = distance_weights[:, :statistic_count]
+            statistic_weights = distance_weights[:, :statistic_count].copy()
+            if step == 2:
+                statistic_neighbors = neighbor_indices[start:stop, :statistic_count]
+                statistic_weights[
+                    statistic_neighbors == batch_query_indices[:, None]
+                ] = 0.0
             residual_median = _weighted_median(statistic_residuals, statistic_weights)
             robust_scale = MAD_TO_SIGMA * _weighted_median(
                 np.abs(statistic_residuals - residual_median), statistic_weights
