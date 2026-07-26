@@ -43,7 +43,7 @@ def estimate_normals(
     A 224-neighbor Gaussian tail stabilizes the provisional tangent under
     positional noise. Two Tukey-biweight IRLS steps refine that normal using
     query-local residual statistics. A third step is accepted only for a thin
-    local sheet, where another redescending fit is unlikely to reject noise.
+    local sheet, with extrapolation scaled by consecutive correction agreement.
     """
     del query_indices
     if neighbor_indices.shape[1] < INITIAL_NEIGHBOR_COUNT:
@@ -92,6 +92,7 @@ def estimate_normals(
             FINAL_STATISTIC_COUNT,
             FINAL_STATISTIC_COUNT,
         )
+        first_refined_normals = normals
         for step, (tukey_cutoff, refinement_count, statistic_count) in enumerate(
             zip(TUKEY_CUTOFFS, refinement_counts, statistic_counts, strict=True)
         ):
@@ -129,13 +130,32 @@ def estimate_normals(
                     :, None
                 ]
                 aligned_normals = refined_normals * np.where(dot < 0.0, -1.0, 1.0)
-                extrapolated = aligned_normals + THIRD_NORMAL_EXTRAPOLATION * (
-                    aligned_normals - normals
+                previous_dot = np.einsum(
+                    "ni,ni->n", normals, first_refined_normals, optimize=True
+                )[:, None]
+                aligned_previous = first_refined_normals * np.where(
+                    previous_dot < 0.0, -1.0, 1.0
                 )
+                previous_update = normals - aligned_previous
+                current_update = aligned_normals - normals
+                agreement = np.einsum(
+                    "ni,ni->n", previous_update, current_update, optimize=True
+                )[:, None]
+                agreement /= np.maximum(
+                    np.linalg.norm(previous_update, axis=1, keepdims=True)
+                    * np.linalg.norm(current_update, axis=1, keepdims=True),
+                    np.finfo(np.float64).eps,
+                )
+                extrapolation = THIRD_NORMAL_EXTRAPOLATION * np.clip(
+                    agreement, 0.0, 1.0
+                )
+                extrapolated = aligned_normals + extrapolation * current_update
                 extrapolated /= np.linalg.norm(extrapolated, axis=1, keepdims=True)
                 normals = np.where(thin_sheet, extrapolated, normals)
             else:
                 normals = refined_normals
+                if step == 0:
+                    first_refined_normals = refined_normals
 
         estimated[start:stop] = normals
 
