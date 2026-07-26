@@ -44,7 +44,6 @@ def estimate_normals(
     query-local residual statistics. A third step is accepted only for a thin
     local sheet, where another redescending fit is unlikely to reject noise.
     """
-    del query_indices
     if neighbor_indices.shape[1] < INITIAL_NEIGHBOR_COUNT:
         msg = f"At least {INITIAL_NEIGHBOR_COUNT} cached neighbors are required"
         raise ValueError(msg)
@@ -123,7 +122,21 @@ def estimate_normals(
             _, eigenvectors = np.linalg.eigh(covariance)
             refined_normals = eigenvectors[:, :, 0]
             if step == 2:
-                thin_sheet = robust_scale <= THIRD_REFINEMENT_MAX_THICKNESS * bandwidth
+                confidence_weights = statistic_weights * (
+                    neighbor_indices[start:stop, :statistic_count]
+                    != query_indices[start:stop, None]
+                )
+                confidence_median = _weighted_median(
+                    statistic_residuals, confidence_weights
+                )
+                confidence_scale = MAD_TO_SIGMA * _weighted_median(
+                    np.abs(statistic_residuals - confidence_median),
+                    confidence_weights,
+                )
+                confidence_scale = np.maximum(confidence_scale, scale_floor)
+                thin_sheet = (
+                    confidence_scale <= THIRD_REFINEMENT_MAX_THICKNESS * bandwidth
+                )
                 normals = np.where(thin_sheet, refined_normals, normals)
             else:
                 normals = refined_normals
