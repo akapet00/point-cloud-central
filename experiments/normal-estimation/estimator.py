@@ -12,6 +12,7 @@ NEIGHBOR_COUNT = 112
 FIRST_STATISTIC_COUNT = 64
 FINAL_NEIGHBOR_COUNT = 128
 FINAL_STATISTIC_COUNT = 32
+THIRD_STATISTIC_COUNT = 33
 INITIAL_NEIGHBOR_COUNT = 224
 DISTANCE_DECAY = 2.0
 TUKEY_CUTOFFS = (4.15, 2.77, 2.77)
@@ -89,7 +90,7 @@ def estimate_normals(
         statistic_counts = (
             FIRST_STATISTIC_COUNT,
             FINAL_STATISTIC_COUNT,
-            FINAL_STATISTIC_COUNT,
+            THIRD_STATISTIC_COUNT,
         )
         for step, (tukey_cutoff, refinement_count, statistic_count) in enumerate(
             zip(TUKEY_CUTOFFS, refinement_counts, statistic_counts, strict=True)
