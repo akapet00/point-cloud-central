@@ -129,10 +129,21 @@ def estimate_normals(
                     :, None
                 ]
                 aligned_normals = refined_normals * np.where(dot < 0.0, -1.0, 1.0)
-                extrapolated = aligned_normals + THIRD_NORMAL_EXTRAPOLATION * (
-                    aligned_normals - normals
+                cosine = np.clip(np.abs(dot), 0.0, 1.0)
+                angle = np.arccos(cosine)
+                tangent = aligned_normals - cosine * normals
+                tangent_norm = np.linalg.norm(tangent, axis=1, keepdims=True)
+                tangent = np.divide(
+                    tangent,
+                    tangent_norm,
+                    out=np.zeros_like(tangent),
+                    where=tangent_norm > np.finfo(np.float64).eps,
                 )
-                extrapolated /= np.linalg.norm(extrapolated, axis=1, keepdims=True)
+                extrapolated_angle = (1.0 + THIRD_NORMAL_EXTRAPOLATION) * angle
+                extrapolated = (
+                    np.cos(extrapolated_angle) * normals
+                    + np.sin(extrapolated_angle) * tangent
+                )
                 normals = np.where(thin_sheet, extrapolated, normals)
             else:
                 normals = refined_normals
