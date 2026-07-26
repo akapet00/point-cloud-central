@@ -1,6 +1,6 @@
 # Explainable normal-estimation search
 
-This experiment tests how closely a simple, explainable, PCA-derived local method can approach state-of-the-art normal estimation on PCPNet. Pi can change both the algorithm and its global hyperparameters, but every improvement must have a clear geometric rationale, remain compact, and be independently ablatable.
+This experiment searches for improvements to fixed-neighborhood PCA normal estimation on PCPNet while keeping the method local, explainable, and compact. Pi can change both the algorithm and its global hyperparameters, but every improvement must have a clear geometric rationale and be independently ablatable.
 
 Research uses a stateless outer loop: one fresh Pi process performs exactly one experiment, writes its result to disk, and exits. Git and concise local records—not conversation history—carry knowledge between iterations.
 
@@ -110,21 +110,11 @@ A retained mechanism must:
 
 Prefer the simpler and faster candidate when validation RMSE differs by less than 0.05 degrees. Neural networks, learned predictors, condition-specific branches, per-shape tables, global reconstruction, orientation propagation, and opaque heuristic pipelines are prohibited.
 
-## Published references
+## Analysis
 
-PFF-Net reports:
-
-| Method | Clean | Low | Medium | High | Stripe | Gradient | Average |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| PCA | 12.29 | 12.87 | 18.38 | 27.52 | 13.66 | 12.81 | 16.25 |
-| PFF-Net | 3.32 | 8.34 | 15.63 | 20.94 | 4.10 | 3.92 | 9.38 |
-
-The published PCA row uses CGAL and is a protocol check rather than a bit-for-bit NumPy baseline.
-
-The final analysis notebook at `notebooks/03-normal-estimation-search/main.ipynb` rebuilds the search summary from the tracked publication snapshot, visualizes all attempts without overcrowding, reports per-condition progress and the accuracy-runtime frontier, and compares the frozen official-test result with representative references from the PFF-Net PCPNet table. It writes publication-ready figures with article-scale typography to `publication/run-01/figures/`.
+The final analysis notebook at `notebooks/03-normal-estimation-search/main.ipynb` rebuilds the search summary from the tracked publication snapshot, visualizes all attempts without overcrowding, and reports per-condition progress, the accuracy-runtime frontier, and the controlled comparison between the frozen finalist and fixed-PCA baseline. It writes publication-ready figures with article-scale typography to `publication/run-01/figures/`.
 
 ## References
 
 - Guerrero et al., [PCPNet: Learning Local Shape Properties from Raw Point Clouds](https://geometry.cs.ucl.ac.uk/projects/2018/pcpnet/)
 - Hoppe et al., *Surface Reconstruction from Unorganized Points*, SIGGRAPH 1992
-- Shi et al., [PFF-Net: Patch Feature Fitting for Point Cloud Normal Estimation](https://arxiv.org/abs/2511.21365)
