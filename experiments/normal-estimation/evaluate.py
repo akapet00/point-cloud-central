@@ -142,6 +142,7 @@ def aggregate(
         "shapes": len(results),
         "shape_results": [
             {
+                "name": result.name,
                 "condition": result.condition,
                 "rmse": result.rmse,
                 "queries": result.queries,

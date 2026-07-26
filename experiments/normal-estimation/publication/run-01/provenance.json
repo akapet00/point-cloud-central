@@ -1,0 +1,61 @@
+{
+  "version": 1,
+  "study": "Explainable normal-estimation search on PCPNet",
+  "search_started_utc": "2026-07-25T14:46:32Z",
+  "search_ended_utc": "2026-07-26T08:34:42Z",
+  "harness_commit": "f33a54480e0eeb90671227a3a41de5d7ee21dfdd",
+  "finalist_commit": "c529cefe0007af493961dd386de9f5323568936b",
+  "finalist_iteration": 279,
+  "finalist_estimator_sha256": "39065aea80932c3bb07cc0b4bfeaa7d0b9fafa01f580a980ef984fc4146e86cb",
+  "baseline_commit": "b787b409d4250130d9519c528daded678b76910e",
+  "baseline_estimator_sha256": "95d82614e94ad4391cb0475805fa458403a49475256379f8f4ee34d0acb04f1f",
+  "records": 323,
+  "agent_iterations": 322,
+  "measured_records_including_baseline": 305,
+  "validation_evaluations": 25,
+  "statuses": {
+    "keep": 12,
+    "provisional": 11,
+    "discard": 282,
+    "crash": 18
+  },
+  "agent": {
+    "provider": "cody",
+    "model": "gpt-5.6-sol",
+    "reasoning_level": "high",
+    "pi_version": "0.82.0",
+    "fresh_session_per_iteration": true,
+    "offline_environment": true
+  },
+  "environment": {
+    "operating_system": "macOS 26.5.2 (25F84)",
+    "cpu": "Apple M4 Max",
+    "memory_bytes": 137438953472,
+    "python": "3.12.11",
+    "numpy": "2.5.1",
+    "scipy": "1.18.0",
+    "uv": "0.11.29"
+  },
+  "protocol": {
+    "metric": "sign-invariant angular RMSE in degrees",
+    "aggregation": "mean per-shape RMSE within condition, then equal mean over six conditions",
+    "development": "1,000 deterministic queries per training point cloud",
+    "validation": "all official queries from three validation geometries",
+    "test": "complete official testset_all.txt; 108 entries and 540,000 queries",
+    "test_overlap_note": "The official test list includes validation geometries and is not a strictly disjoint third split.",
+    "test_evaluation_policy": "The finalist was frozen before one test evaluation. The baseline was evaluated afterward only for controlled reporting."
+  },
+  "checksums_sha256": {
+    "baseline-test-results.json": "341f074a1c667b2b5a3805f2af30acccbed4e7759533fad3202a94933a2ff9af",
+    "bootstrap-results.json": "63ae3205689a5231c7e6496d45e90983725a6749a5965380f11b03e7f7c28a27",
+    "condition-results.tsv": "a45148a529546c027cb12a1a610ece7e8a40e1eadb7290e12c13be2868caf057",
+    "final-results.json": "3e7b8a2e8de3a78878d1452f5a9b5b511e3924f950ea3e4d91b9615a6162999c",
+    "records.jsonl": "c13ff340b1b43dabb832376ac652f9e97fccd69fce02c4450740b477dba13a2c",
+    "results.tsv": "03a2eaed020cc27fde8ba3d7f446acba2ddf034ae07cc5ec1e8d93b54f71d96c"
+  },
+  "limitations": [
+    "The study has no randomized unphased control run, so it does not identify the causal effect of the workflow.",
+    "Development and validation were used repeatedly during model selection.",
+    "API token counts and monetary cost were not persisted by the loop."
+  ]
+}

@@ -1,0 +1,324 @@
+iteration	status	dev_rmse	val_rmse	dev_clean	dev_low	dev_medium	dev_high	dev_stripe	dev_gradient	val_clean	val_low	val_medium	val_high	val_stripe	val_gradient	runtime_s	memory_mb	description
+0	keep	19.189958	16.316211	12.51424	13.654685	25.827248	39.456737	12.406353	11.280486	14.0578	14.324811	18.203646	25.289574	13.950822	12.070614	0.496	61.4	fixed k=112 PCA
+1	keep	18.881278	15.673184	11.467993	12.930186	26.728685	40.538226	11.246736	10.375841	12.928023	13.251048	18.02386	25.797207	12.856646	11.182321	0.467	65.3	Gaussian distance-weighted PCA over the existing 112-neighbor patch
+2	crash																	Per-query surface-variation selection among 32-, 64-, and 112-neighbor Gaussian-weighted PCA fits (failed: CalledProcessError)
+3	discard	18.980142		12.010469	13.301114	26.104124	39.749797	11.880433	10.834917							0.499	65.3	Reduce the Gaussian PCA distance-decay coefficient from 2.0 to 1.0
+4	crash																	Gaussian-weighted quadratic jet refinement in the local PCA frame (failed: CalledProcessError)
+5	discard	19.010716		10.961	12.592576	27.846634	41.975914	10.713788	9.974382							0.489	66.0	Increase the Gaussian PCA distance-decay coefficient from 2.0 to 3.0
+6	discard	18.659968	16.256665	12.560939	13.695058	24.30852	37.592444	12.542513	11.260333	14.185551	14.436622	18.134133	24.376034	14.191721	12.215929	0.511	77.1	Increase the Gaussian-weighted PCA neighborhood from 112 to 160 neighbors
+7	provisional	18.735248		13.733729	14.645704	23.192077	35.017165	13.529916	12.292894							0.581	77.5	Increase the Gaussian-weighted PCA neighborhood from 112 to 224 neighbors
+8	discard	19.589027		10.672644	12.370827	30.331627	44.197667	10.298139	9.663262							0.457	65.4	Reduce the Gaussian-weighted PCA neighborhood from 224 to 80 neighbors
+9	discard	18.367378	16.817228	12.989264	14.565899	23.192077	35.017165	12.763239	11.676621	15.116433	15.603469	18.552867	23.880496	15.001139	12.748963	0.678	71.3	Select between 80- and 224-neighbor Gaussian PCA using small-scale surface variation
+10	keep	18.672701	15.375965	10.973759	12.676787	26.935962	40.673865	10.81413	9.961702	12.385435	12.797494	17.99356	25.888841	12.414488	10.775975	0.682	78.4	One-step Cauchy residual reweighting of the retained 112-neighbor Gaussian PCA
+11	discard	18.638573		10.88909	12.636968	26.979219	40.698092	10.740032	9.888034							0.658	70.2	Reduce the one-step Cauchy residual cutoff from 2.5 to 2.0 sigma
+12	discard	18.702036		11.046121	12.7121	26.900192	40.652488	10.877286	10.024027							0.664	77.2	Increase the one-step Cauchy residual cutoff from 2.5 to 3.0 sigma
+13	discard	18.37989	15.914907	11.970245	13.291809	24.400275	37.682085	12.096309	10.838616	13.60451	13.926909	18.057591	24.4021	13.728805	11.76953	0.768	78.0	Increase the retained robust Gaussian-PCA neighborhood from 112 to 160 neighbors
+14	discard	18.69935		11.01092	12.702438	26.949367	40.661211	10.861906	10.010255							0.726	70.2	Center Cauchy reweighting on the median signed plane residual
+15	keep	18.609693	15.275942	10.80331	12.5931	27.036479	40.738023	10.672651	9.814593	12.199279	12.647664	17.985286	25.932021	12.258449	10.632953	0.826	72.8	Add a second Cauchy residual-reweighting step to the retained robust Gaussian PCA
+16	discard	18.589854		10.732106	12.574338	27.090524	40.771083	10.617084	9.753986							1.021	72.9	Increase Cauchy residual reweighting from two to three IRLS steps
+17	crash																	Freeze the Cauchy residual scale from the initial Gaussian-PCA fit across both IRLS steps
+18	discard	18.631545		10.847126	12.60805	27.03352	40.737056	10.708061	9.855456							0.756	83.2	Hold the initial MAD residual scale fixed during both Cauchy plane refinements
+19	crash																	Gate the second Cauchy refinement by initial PCA surface variation
+20	discard	18.667599		10.96254	12.676863	26.935962	40.673865	10.80526	9.951107							0.831	81.6	Use initial surface variation to conditionally accept the second Cauchy IRLS refinement
+21	discard	18.642562		10.892238	12.638587	26.982398	40.705526	10.747048	9.889577							0.828	78.3	Relax the Cauchy cutoff from 2.5 to 3.0 sigma only during the second IRLS refinement
+22	discard	18.573155		10.699968	12.544213	27.103405	40.778162	10.586136	9.727048							0.848	73.0	Tighten the Cauchy cutoff from 2.5 to 2.0 sigma only during the second IRLS refinement
+23	discard	18.790807		11.294515	12.848593	26.726016	40.535182	11.098462	10.242076							0.894	80.1	Replace Cauchy residual weights with Huber weights in both robust PCA refinements
+24	discard	21.199881		11.924836	13.438769	31.857784	47.228304	11.92181	10.827785							0.909	78.0	Use provisional tangent-plane distance in the Gaussian kernel for both robust PCA refinements
+25	discard	17.869984	15.711446	11.599311	13.15205	23.769633	36.464585	11.661852	10.57247	13.272627	13.683379	18.103797	24.177355	13.484999	11.546519	1.227	101.1	Extend robust Gaussian-PCA support to 224 neighbors while retaining the 112th-neighbor kernel bandwidth
+26	discard	18.157194	15.468579	11.264631	12.840361	24.8014	38.340467	11.363323	10.332984	12.80705	13.227472	17.975308	24.669421	12.98709	11.145133	1.018	78.3	Use a 160-neighbor Gaussian tail while retaining the 112th-neighbor kernel bandwidth
+27	discard	23.827748		12.603854	15.325856	39.859284	51.854093	12.313313	11.010086							0.811	74.0	Anchor each robust Gaussian-PCA plane at the query instead of the weighted neighborhood centroid
+28	discard	18.584173		10.807809	12.598524	26.941128	40.675399	10.672978	9.809197							0.877	73.1	Gate the second Cauchy refinement by the initial normal eigengap
+29	discard	18.423357	15.273004	10.878196	12.590974	26.306482	39.950378	10.893602	9.920511	12.271997	12.701398	17.974945	25.663654	12.349972	10.676056	0.959	78.5	Initialize local robust PCA from a 160-neighbor Gaussian tail, then retain 112-neighbor IRLS refinements
+30	discard	18.584703		10.731517	12.559153	27.085076	40.766441	10.612164	9.75387							0.837	73.0	Use a decreasing 3.0-to-2.0 sigma Cauchy cutoff schedule across the two robust PCA refinements
+31	provisional	18.534534		10.586437	12.497821	27.179849	40.823407	10.490951	9.628741							0.846	81.9	Tighten only the second Cauchy refinement cutoff from 2.5 to 1.5 sigma
+32	discard	18.500528		10.487469	12.467782	27.246354	40.859829	10.404918	9.536815							0.879	73.0	Tighten only the second Cauchy refinement cutoff from 1.5 to 1.0 sigma
+33	discard	18.495918		10.481589	12.492625	27.236342	40.84881	10.3924	9.523742							0.855	74.8	Tighten only the second Cauchy refinement cutoff from 1.5 to 0.5 sigma
+34	discard	18.519192		10.543973	12.477568	27.20702	40.840533	10.456628	9.589434							0.887	81.6	Tighten the first Cauchy refinement cutoff from 2.5 to 2.0 sigma while retaining the 1.5-sigma second cutoff
+35	discard	18.501064		10.4974	12.455882	27.234001	40.85637	10.417071	9.545659							0.877	73.0	Tighten the first Cauchy refinement cutoff from 2.5 to 1.5 sigma to match the retained second cutoff
+36	discard	18.530493		10.633503	12.525278	27.078297	40.758444	10.526422	9.661015							0.831	80.9	Smoothly relax the second Cauchy cutoff using initial normal eigengap ambiguity
+37	keep	18.117488	15.142221	10.680058	12.560788	25.889379	39.084313	10.674182	9.816209	12.053857	12.551116	18.007935	25.499444	12.213512	10.527459	0.988	78.7	Initialize robust local PCA from a 224-neighbor Gaussian tail, then refine on 112 neighbors
+38	discard	18.093078		10.640583	12.537831	25.875139	39.084259	10.641535	9.779122							1.002	85.9	Recenter the broad provisional normal on the local 112-neighbor Gaussian centroid before robust refinement
+39	discard	18.230178		10.559616	12.438349	26.372184	39.92467	10.462653	9.623597							1.001	85.6	Tighten only the 224-neighbor initialization kernel from Gaussian decay 2.0 to 3.0
+40	crash																	Relax only the 224-neighbor initialization kernel from Gaussian decay 2.0 to 1.0
+41	discard	18.095621		10.878451	12.657387	25.698507	38.548242	10.845916	9.945224							1.044	93.2	Relax only the 224-neighbor initialization kernel from Gaussian decay 2.0 to 1.0
+42	discard	18.285766		10.345726	12.269917	27.026494	40.416996	10.183702	9.471758							1.003	81.2	Reduce the robust refinement neighborhood and Gaussian bandwidth anchor from 112 to 96 neighbors
+43	discard	18.175115		10.602814	12.494226	26.232815	39.44853	10.542406	9.7299							1.034	88.6	Use 96 neighbors only for the final Cauchy PCA refinement
+44	keep	17.97892	15.090036	10.599116	12.546449	25.65961	38.712875	10.59565	9.759817	11.977157	12.496903	18.016659	25.430792	12.161079	10.457625	1.243	80.3	Use Gaussian-distance-weighted medians for residual location and MAD scale in both Cauchy refinements
+45	discard	17.915474	15.040824	10.497519	12.503614	25.62137	38.688261	10.515491	9.66659	11.890774	12.427392	18.012721	25.43387	12.095971	10.384219	1.281	92.7	Center first-pass Cauchy residuals on their Gaussian-weighted median
+46	discard	17.929403		10.513786	12.514622	25.643448	38.703039	10.520471	9.681051							1.265	81.1	Center second-pass Cauchy residuals on their Gaussian-weighted median
+47	keep	17.889097	15.016975	10.449493	12.487665	25.615878	38.684347	10.470239	9.626961	11.848447	12.398743	18.011682	25.434062	12.058746	10.350167	1.311	92.6	Center both Cauchy refinement losses on the Gaussian-weighted residual median
+48	discard	17.841476		10.283035	12.412846	25.764449	38.842135	10.274981	9.471408							1.285	83.4	Narrow only the robust-refinement Gaussian bandwidth from the 112th- to the 96th-neighbor radius while retaining 112-point support
+49	discard	17.93498		10.57913	12.551377	25.522557	38.586119	10.615097	9.755598							1.299	97.6	Widen only the robust-refinement Gaussian bandwidth from the 112th- to the 128th-neighbor radius while retaining 112-point support
+50	crash																	Add a Gaussian- and Cauchy-weighted quadratic jet refinement in the final robust PCA frame
+51	discard	17.852589		10.418166	12.48803	25.571539	38.598388	10.442889	9.596524							1.284	80.5	Tighten the final Cauchy refinement cutoff from 1.5 to 1.25 weighted-MAD sigmas
+52	discard	17.971906		10.464763	12.481274	25.806808	38.967342	10.484978	9.62627							1.276	82.2	Relax only the first Cauchy refinement cutoff from 2.5 to 3.0 weighted-MAD sigmas
+53	provisional	17.834106		10.499058	12.52178	25.330333	38.42337	10.5457	9.684392							1.389	86.3	Extend only the final robust PCA refinement from 112 to 128 neighbors
+54	provisional	17.763026		10.552872	12.566519	24.977546	38.078913	10.642151	9.760154							1.534	88.7	Extend only the final robust PCA refinement from 128 to 160 neighbors
+55	discard	17.763026		10.552872	12.566519	24.977546	38.078913	10.642151	9.760154							1.48	88.8	Extend only the final robust PCA refinement from 160 to 224 neighbors
+56	discard	17.786708		10.644638	12.615333	24.881245	37.981419	10.748038	9.849574							1.521	103.9	Widen only the 160-neighbor final-refinement Gaussian bandwidth from the 112th- to the 128th-neighbor radius
+57	discard	17.775111		10.601423	12.590195	24.927366	38.026492	10.698553	9.806637							1.506	91.0	Widen only the final-refinement Gaussian bandwidth from the 112th- to the 120th-neighbor radius
+58	crash																	Narrow only the 160-neighbor final-refinement Gaussian bandwidth from the 112th- to the 104th-neighbor radius
+59	discard	17.749612		10.500074	12.536964	25.036248	38.134919	10.580574	9.708895							1.504	100.8	Narrow only the 160-neighbor final-refinement Gaussian bandwidth from the 112th- to the 104th-neighbor radius
+60	discard	17.756779		10.527522	12.551952	25.00502	38.106349	10.614371	9.735457							1.49	93.9	Narrow only the 160-neighbor final-refinement Gaussian bandwidth from the 112th- to the 108th-neighbor radius
+61	discard	17.733021		10.435808	12.504265	25.101665	38.200768	10.50575	9.64987							1.531	90.8	Narrow only the 160-neighbor final-refinement Gaussian bandwidth from the 112th- to the 96th-neighbor radius
+62	discard	17.797892		10.534278	12.546346	25.132386	38.232688	10.606737	9.734917							1.462	105.4	Reduce only the final robust PCA refinement from 160 to 144 neighbors
+63	discard	17.778734		10.544358	12.554361	25.052854	38.143808	10.627693	9.749329							1.45	88.1	Reduce only the final robust PCA refinement from 160 to 152 neighbors
+64	discard	17.739042		10.509917	12.54531	24.984879	38.082702	10.596035	9.715409							1.328	86.7	Estimate the final-pass robust residual location and scale from the core 112-neighbor patch while retaining 160-neighbor covariance support
+65	discard	17.749163		10.530223	12.553893	24.981453	38.081242	10.614554	9.733616							1.384	90.3	Estimate final-pass Cauchy location and scale from 128 core neighbors while retaining 160-neighbor covariance support
+66	discard	17.725096		10.483577	12.531593	24.988161	38.086335	10.570923	9.689986							1.314	86.8	Estimate final-pass Cauchy location and scale from 96 core neighbors while retaining 160-neighbor covariance support
+67	discard	17.707436	14.994009	10.445237	12.519083	24.991669	38.088594	10.542038	9.657993	11.938608	12.50067	17.960915	24.953256	12.191844	10.41876	1.274	101.9	Estimate final-pass Cauchy location and scale from 80 core neighbors while retaining 160-neighbor covariance support
+68	crash																	Shrink the final robust local normal 10% toward the sign-aligned broad provisional PCA normal
+69	discard	17.866365		10.594978	12.571559	25.335926	38.369328	10.593854	9.732546							1.256	80.5	Blend 10% of the sign-aligned 224-neighbor provisional PCA normal into the final local robust normal
+70	discard	17.910922		10.395542	12.436614	25.917692	38.971585	10.237078	9.507024							1.326	85.5	Use an area-preserving anisotropic Gaussian kernel for both robust local PCA refinements
+71	crash																	Apply the area-preserving anisotropic Gaussian kernel only in the final robust PCA refinement
+72	discard	18.064942		10.71642	12.657567	25.64294	38.618279	10.897622	9.856824							1.302	88.8	Apply an area-preserving anisotropic Gaussian kernel only in the final robust PCA refinement
+73	keep	17.812142	14.850593	10.180751	12.353957	25.816757	38.879045	10.266919	9.375423	11.506434	12.101423	18.030109	25.540189	11.826237	10.099166	1.272	80.5	Replace Cauchy residual weights with matched Tukey-biweight rejection in both robust PCA refinements
+74	discard	17.775517		10.222437	12.391822	25.670918	38.68241	10.27843	9.407084							1.296	89.6	Use Cauchy reweighting for the first robust PCA correction and Tukey rejection only for the final refinement
+75	discard	17.92221		10.209145	12.350696	26.050905	39.247777	10.285224	9.38951							1.325	80.5	Relax only the first Tukey-biweight cutoff from 4.62 to 5.54 weighted-MAD sigmas
+76	discard	17.907287		10.292221	12.362321	25.867143	39.06351	10.364369	9.494161							1.277	90.7	Relax only the final Tukey-biweight cutoff from 2.77 to 3.69 weighted-MAD sigmas
+77	discard	17.772818		10.178484	12.442841	25.719877	38.66435	10.272212	9.359145							1.3	80.2	Tighten only the final Tukey-biweight cutoff from 2.77 to 1.85 weighted-MAD sigmas
+78	discard	17.781557		10.154571	12.384223	25.782301	38.780723	10.244994	9.342529							1.278	93.4	Tighten only the final Tukey-biweight cutoff from 2.77 to 2.31 weighted-MAD sigmas
+79	provisional	17.690178		10.15021	12.371053	25.545813	38.459631	10.256811	9.357547							1.282	87.8	Tighten only the first Tukey-biweight cutoff from 4.62 to 3.69 weighted-MAD sigmas
+80	discard	17.583765	14.805164	10.131525	12.409033	25.272498	38.058923	10.27749	9.353119	11.444318	12.072738	18.072169	25.291835	11.841974	10.107951	1.301	82.4	Tighten the first Tukey-biweight cutoff from 3.69 to 2.77 weighted-MAD sigmas
+81	provisional	17.633485		10.136742	12.385217	25.41331	38.253681	10.261715	9.350243							1.311	86.9	Tighten only the first Tukey-biweight cutoff from 4.62 to 3.23 weighted-MAD sigmas
+82	discard	17.607057		10.129682	12.394774	25.344132	38.154353	10.268652	9.350749							1.31	80.4	Tighten only the first Tukey-biweight cutoff from 3.23 to 3.0 weighted-MAD sigmas
+83	discard	17.613678		10.120692	12.399753	25.386847	38.19077	10.250703	9.333302							1.263	94.1	Tighten only the final Tukey-biweight cutoff from 2.77 to 2.54 weighted-MAD sigmas
+84	discard	17.618118		10.131935	12.38961	25.374245	38.198179	10.264812	9.34993							1.262	80.3	Tighten only the first Tukey-biweight cutoff from 3.23 to 3.1 weighted-MAD sigmas
+85	discard	17.748073		10.094953	12.259032	25.695629	38.796594	10.303775	9.338456							1.245	80.2	Reduce broad Tukey-PCA initialization support from 224 to 192 neighbors
+86	discard	17.697872		10.133013	12.329018	25.543351	38.538124	10.296892	9.346831							1.285	95.0	Reduce broad Tukey-PCA initialization support from 224 to 208 neighbors
+87	discard	17.660994		10.130825	12.283759	25.490316	38.422844	10.297087	9.341133							1.275	88.4	Reduce broad Tukey-PCA initialization support from 224 to 216 neighbors
+88	discard	17.645685		10.139013	12.377839	25.440447	38.305898	10.264706	9.346205							1.332	80.3	Reduce broad Tukey-PCA initialization support from 224 to 220 neighbors
+89	discard	17.562944	14.80762	10.138451	12.425555	25.200844	37.964261	10.294649	9.353904	11.445114	12.090631	18.080996	25.253762	11.856735	10.118484	1.303	93.5	Tighten only the first Tukey-biweight cutoff from 3.23 to 2.54 weighted-MAD sigmas
+90	discard	17.799541		10.194984	12.2736	25.840057	38.844538	10.26163	9.38244							1.275	81.0	Leave the query sample out of the broad and robust weighted PCA covariances
+91	discard	17.810594		10.193182	12.325853	25.837274	38.866069	10.263871	9.377314							1.28	81.0	Give the query sample half Gaussian weight in all three weighted PCA fits
+92	discard	17.798905		10.180491	12.292817	25.829005	38.865705	10.257234	9.36818							1.278	82.0	Leave the query sample out of only the broad provisional PCA initialization
+93	discard	17.815099		10.19559	12.352952	25.806644	38.862509	10.277076	9.395821							1.282	87.1	Leave the query sample out of only the final Tukey-PCA refinement
+94	discard	17.81062		10.181624	12.335204	25.843066	38.877889	10.258664	9.367271							1.322	81.5	Leave the query sample out of only the first local Tukey-PCA refinement
+95	discard	17.916047		10.150487	12.259961	26.025987	39.37321	10.308456	9.378182							1.279	80.8	Use a rank-Gaussian kernel only for the broad provisional PCA initialization
+96	discard	17.767349		10.191759	12.361645	25.679814	38.71628	10.272489	9.382109							1.262	80.7	Use final normal eigengap ambiguity to control shrinkage toward the broad provisional PCA normal
+97	discard	17.774723		10.190841	12.360925	25.698467	38.741355	10.272282	9.384467							1.269	93.5	Gate broad-normal shrinkage by both final eigengap ambiguity and cross-scale agreement
+98	discard	17.773264		10.184001	12.355475	25.711407	38.745354	10.263869	9.37948							1.263	80.7	Apply 10% broad-normal shrinkage only when the final robust PCA eigengap is ambiguous
+99	discard	17.831596		10.313143	12.41868	25.640652	38.740266	10.38214	9.494695							1.281	81.1	Shrink the final robust local covariance 10% toward the normalized broad provisional covariance
+100	discard	17.676831	14.848915	10.236184	12.37581	25.254196	38.367199	10.375648	9.451945	11.645083	12.230018	17.9569	25.084084	11.969195	10.20821	1.511	88.7	Extend only the final Tukey-PCA refinement from 112 to 160 neighbors
+101	provisional	17.752443		10.207048	12.363953	25.566652	38.655655	10.314495	9.406855							1.431	100.2	Extend only the final Tukey-PCA refinement from 112 to 128 neighbors
+102	discard	17.711135		10.226276	12.370559	25.386868	38.494325	10.351693	9.437087							1.481	102.8	Extend only the final Tukey-PCA refinement from 128 to 144 neighbors
+103	discard	17.731052		10.217344	12.369112	25.468486	38.571358	10.337353	9.422662							1.483	98.1	Extend only the final Tukey-PCA refinement from 128 to 136 neighbors
+104	discard	17.742641		10.166863	12.348666	25.609661	38.695063	10.26753	9.368063							1.451	98.3	Narrow only the 128-neighbor final Tukey-PCA Gaussian bandwidth from the 112th- to the 104th-neighbor radius
+105	discard	17.747725		10.186623	12.355691	25.586623	38.674781	10.292974	9.389657							1.437	106.6	Narrow only the 128-neighbor final Tukey-PCA Gaussian bandwidth from the 112th- to the 108th-neighbor radius
+106	discard	17.78095		10.19552	12.35885	25.688944	38.75669	10.294953	9.390745							1.429	95.4	Reduce only the final Tukey-PCA refinement from 128 to 120 neighbors
+107	discard	17.76706		10.202424	12.363091	25.62634	38.704145	10.30532	9.401042							1.437	110.8	Reduce only the final Tukey-PCA refinement from 128 to 124 neighbors
+108	discard	17.739822		10.185772	12.358108	25.564621	38.650491	10.295597	9.384345							1.384	96.0	Estimate final Tukey residual location and scale from the 112-neighbor core while retaining 128-neighbor covariance support
+109	discard	17.724675		10.163754	12.348479	25.563515	38.645952	10.269388	9.35696							1.359	96.1	Estimate final Tukey residual location and scale from a 96-neighbor core while retaining 128-neighbor covariance support
+110	discard	17.706787		10.128368	12.344933	25.560397	38.638456	10.241265	9.327303							1.306	95.8	Estimate final Tukey residual location and scale from an 80-neighbor core while retaining 128-neighbor covariance support
+111	keep	17.683331	14.779952	10.079867	12.343174	25.555994	38.626216	10.206136	9.288601	11.423862	12.055618	18.007697	25.391661	11.76375	10.037123	1.269	104.8	Estimate final Tukey residual location and scale from a 64-neighbor core while retaining 128-neighbor covariance support
+112	discard	17.653775		10.029592	12.333031	25.542871	38.617203	10.178059	9.221897							1.245	96.8	Estimate final Tukey residual location and scale from a 48-neighbor core while retaining 128-neighbor covariance support
+113	discard	17.655119		10.034134	12.323683	25.542158	38.636373	10.1717	9.222664							1.295	96.9	Estimate final Tukey residual location from 48 core neighbors while retaining the 64-neighbor scale estimate
+114	discard	17.682077		10.078597	12.349273	25.559406	38.606933	10.210739	9.287514							1.274	110.2	Estimate final Tukey residual scale from 48 core neighbors while retaining the 64-neighbor location estimate
+115	discard	17.946627		10.158926	12.341728	25.960423	39.552108	10.289362	9.377216							1.359	113.4	Use corrected tangent-plane distance for the final robust PCA spatial kernel
+116	provisional	17.632223		10.006906	12.320135	25.51372	38.580006	10.160369	9.212199							1.179	96.8	Estimate final Tukey residual location and scale from a 32-neighbor core while retaining 128-neighbor covariance support
+117	discard	17.665592		10.08225	12.378927	25.436751	38.503899	10.280295	9.311431							1.18	96.8	Estimate final Tukey residual location and scale from a 16-neighbor core while retaining 128-neighbor covariance support
+118	discard	17.636826		10.019189	12.32927	25.492371	38.562761	10.200247	9.217122							1.184	96.8	Estimate final Tukey residual location and scale from a 24-neighbor core while retaining 128-neighbor covariance support
+119	discard	17.630768		10.01001	12.322222	25.498976	38.574932	10.16926	9.209209							1.239	104.8	Estimate final Tukey residual location and scale from a 28-neighbor core while retaining 128-neighbor covariance support
+120	discard	17.630704		9.995951	12.317519	25.50346	38.578953	10.172756	9.215586							1.226	96.5	Estimate final Tukey residual location and scale from a 30-neighbor core while retaining 128-neighbor covariance support
+121	discard	17.624252		9.989918	12.305567	25.52541	38.615501	10.132656	9.176462							1.216	96.9	Estimate final Tukey residual location from 32 neighbors and scale from 48 neighbors
+122	discard	17.623986		9.986181	12.315103	25.506878	38.5902	10.156624	9.188931							1.184	96.9	Estimate final Tukey residual location from 24 neighbors while retaining the 32-neighbor scale estimate
+123	discard	17.642633		10.034785	12.326747	25.498522	38.560578	10.191265	9.243899							1.179	99.4	Estimate final Tukey residual location from 32 neighbors and scale from 24 neighbors
+124	keep	17.539547	14.705215	9.943366	12.306801	25.369013	38.305784	10.141378	9.170939	11.269413	11.943246	18.061025	25.369274	11.675323	9.913007	1.09	97.3	Estimate first-pass Tukey residual location and scale from a 64-neighbor core while retaining 112-neighbor covariance support
+125	provisional	17.436335		9.954249	12.303457	25.105294	37.97461	10.158053	9.122348							1.046	97.2	Reduce the first-pass Tukey residual-statistic core from 64 to 32 neighbors while retaining 112-neighbor covariance support
+126	discard	17.418577		10.038919	12.376409	24.905778	37.717041	10.323163	9.150153							1.048	98.4	Reduce the first-pass Tukey residual-statistic core from 32 to 16 neighbors while retaining 112-neighbor covariance support
+127	discard	17.414162		9.952916	12.302869	25.037021	37.880927	10.222239	9.088996							1.069	97.1	Reduce the first-pass Tukey residual-statistic core from 32 to 24 neighbors while retaining 112-neighbor covariance support
+128	discard	17.434364		9.952666	12.318781	25.076324	37.931285	10.220258	9.10687							1.015	108.1	Reduce the first-pass Tukey residual-statistic core from 32 to 28 neighbors while retaining 112-neighbor covariance support
+129	discard	17.418637		9.974961	12.319211	25.029658	37.872591	10.212551	9.10285							1.016	110.2	Estimate first-pass Tukey residual location from 32 neighbors and scale from 24 neighbors
+130	discard	17.43673		9.924518	12.284133	25.121767	37.994705	10.194405	9.100855							1.03	97.4	Estimate first-pass Tukey residual location from 24 neighbors while retaining the 32-neighbor scale estimate
+131	discard	17.491657		9.934525	12.297491	25.264723	38.188663	10.125171	9.139371							1.046	106.3	Estimate first-pass Tukey residual location from 32 neighbors and scale from 48 neighbors
+132	discard	17.498365		9.931402	12.318281	25.272458	38.168886	10.139654	9.159513							1.075	110.2	Increase the first-pass Tukey residual-statistic core from 32 to 48 neighbors
+133	discard	17.466807		9.938177	12.302361	25.198058	38.066058	10.151618	9.144571							1.081	106.3	Use a 40-neighbor first-pass Tukey residual-statistic core
+134	discard	17.450218		9.942597	12.311882	25.145606	38.025743	10.137626	9.137853							1.045	106.4	Use a 36-neighbor first-pass Tukey residual-statistic core
+135	discard	17.436335		9.954249	12.303457	25.105294	37.97461	10.158053	9.122348							1.03	110.5	Use a 34-neighbor first-pass Tukey residual-statistic core
+136	discard	17.446882		9.937981	12.320649	25.145248	38.012102	10.131798	9.133515							1.026	97.6	Use a 35-neighbor first-pass Tukey residual-statistic core
+137	discard	17.380046	14.720481	10.005305	12.32013	24.855877	37.696339	10.254714	9.147907	11.327525	12.021307	18.093408	25.124586	11.766349	9.989708	1.043	89.5	Extend only the first Tukey-PCA refinement from 112 to 128 neighbors
+138	provisional	17.484047		9.984158	12.305652	25.176383	38.066638	10.174459	9.19699							1.1	101.3	Extend only the first Tukey-PCA refinement from 112 to 120 neighbors
+139	discard	17.463383		9.99789	12.314713	25.090568	37.974565	10.198356	9.204206							1.177	98.3	Extend only the first Tukey-PCA refinement from 120 to 124 neighbors
+140	discard	17.471592		9.991111	12.313176	25.136895	38.015364	10.183323	9.189683							1.131	98.2	Extend only the first Tukey-PCA refinement from 120 to 122 neighbors
+141	discard	17.479004		9.984427	12.306497	25.161144	38.047705	10.181357	9.192894							1.106	98.1	Extend only the first Tukey-PCA refinement from 120 to 121 neighbors
+142	discard	17.483155		9.968132	12.3005	25.195767	38.093891	10.158485	9.182156							1.115	98.1	Narrow only the 120-neighbor first-refinement Gaussian bandwidth from the 112th- to the 108th-neighbor radius
+143	discard	17.483927		9.977965	12.301422	25.186524	38.079645	10.166403	9.191604							1.126	98.0	Narrow only the 120-neighbor first-refinement Gaussian bandwidth from the 112th- to the 110th-neighbor radius
+144	discard	17.48524		9.995729	12.310273	25.157094	38.043295	10.193639	9.211409							1.137	98.1	Widen only the 120-neighbor first-refinement Gaussian bandwidth from the 112th- to the 116th-neighbor radius
+145	discard	17.484838		9.991327	12.307638	25.166404	38.054143	10.185261	9.204257							1.126	114.2	Widen only the 120-neighbor first-refinement Gaussian bandwidth from the 112th- to the 114th-neighbor radius
+146	discard	17.484047		9.984158	12.305652	25.176383	38.066638	10.174459	9.19699							1.161	98.1	Reduce only the first Tukey-PCA refinement from 120 to 116 neighbors
+147	discard	17.517281		9.945172	12.30173	25.306075	38.228165	10.136687	9.185858							1.122	97.6	Reduce only the first Tukey-PCA refinement from 120 to 114 neighbors
+148	discard	17.512371		9.955453	12.302356	25.28461	38.200981	10.144372	9.186454							1.143	111.6	Reduce only the first Tukey-PCA refinement from 120 to 115 neighbors
+149	discard	17.472633		10.041932	12.322607	25.107609	37.929942	10.208134	9.225574							1.138	102.1	Widen only the 224-neighbor provisional-PCA Gaussian bandwidth from the 112th- to the 120th-neighbor radius
+150	discard	17.480103		9.962477	12.248027	25.198091	38.152869	10.149002	9.170153							1.132	102.0	Narrow only the 224-neighbor provisional-PCA Gaussian bandwidth from the 112th- to the 108th-neighbor radius
+151	discard	17.484743		9.972442	12.301318	25.183145	38.112801	10.156122	9.182628							1.14	102.1	Narrow only the 224-neighbor provisional-PCA Gaussian bandwidth from the 112th- to the 110th-neighbor radius
+152	discard	17.476743		10.014923	12.313299	25.133052	37.988683	10.19612	9.214383							1.159	120.9	Widen only the 224-neighbor provisional-PCA Gaussian bandwidth from the 112th- to the 116th-neighbor radius
+153	discard	17.480433		9.995356	12.311246	25.154916	38.02839	10.185405	9.207284							1.176	101.9	Widen only the 224-neighbor provisional-PCA Gaussian bandwidth from the 112th- to the 114th-neighbor radius
+154	discard	17.400428	14.713823	9.991032	12.310277	24.982947	37.79837	10.188526	9.131416	11.298549	11.983202	18.101017	25.201406	11.73075	9.96801	1.045	98.0	Reduce the first-pass Tukey residual-statistic core from 64 to 32 neighbors while retaining 120-neighbor covariance support
+155	discard	17.518309		9.936921	12.309332	25.324364	38.238935	10.133955	9.166347							1.06	97.3	Reduce the first-pass Tukey residual-statistic core from 64 to 56 neighbors
+156	discard	17.526526		9.942712	12.308667	25.325584	38.274589	10.144124	9.163479							1.1	97.4	Reduce the first-pass Tukey residual-statistic core from 64 to 60 neighbors
+157	discard	17.534231		9.94218	12.305326	25.356707	38.297952	10.142469	9.160753							1.093	97.4	Reduce the first-pass Tukey residual-statistic core from 64 to 62 neighbors
+158	discard	17.536265		9.943147	12.305659	25.362203	38.297981	10.145909	9.162691							1.119	100.1	Reduce the first-pass Tukey residual-statistic core from 64 to 63 neighbors
+159	provisional	17.48463		9.939875	12.314534	25.23191	38.116983	10.136372	9.168108							1.117	97.2	Tighten only the first Tukey-biweight cutoff from 4.62 to 4.15 weighted-MAD sigmas
+160	discard	17.460977		9.941373	12.323652	25.168899	38.023591	10.139019	9.16933							1.132	110.4	Tighten only the first Tukey-biweight cutoff from 4.15 to 3.92 weighted-MAD sigmas
+161	discard	17.473028		9.940567	12.318809	25.201736	38.072035	10.136964	9.168055							1.088	97.3	Tighten only the first Tukey-biweight cutoff from 4.15 to 4.04 weighted-MAD sigmas
+162	discard	17.479341		9.940307	12.316555	25.218091	38.096521	10.136507	9.168064							1.075	110.4	Tighten only the first Tukey-biweight cutoff from 4.15 to 4.10 weighted-MAD sigmas
+163	discard	17.510985		9.939923	12.309598	25.297863	38.211012	10.138643	9.16887							1.091	97.4	Relax only the first Tukey-biweight cutoff from 4.15 to 4.38 weighted-MAD sigmas
+164	discard	17.486139		9.944668	12.322588	25.227325	38.102536	10.143013	9.176706							1.088	97.4	Tighten only the final Tukey-biweight cutoff from 2.77 to 2.65 weighted-MAD sigmas
+165	discard	17.44921		9.534876	12.210526	25.688154	38.589256	9.857063	8.815386							1.343	106.5	Add a third Tukey-biweight refinement on the retained 128-neighbor final patch
+166	keep	17.32966	14.510292	9.605558	12.26303	25.234757	38.117551	9.888752	8.868309	10.93522	11.683143	18.080307	25.312434	11.442436	9.60821	1.367	97.5	Accept a third Tukey refinement only on geometrically thin local sheets
+167	discard	17.316307		9.568144	12.254761	25.241576	38.120566	9.872762	8.840031							1.326	97.5	Relax the third-refinement sheet-thickness gate from 0.10 to 0.125 local radii
+168	crash																	Require angular stability before accepting the gated third Tukey refinement
+169	discard	17.372323		9.701357	12.274935	25.234757	38.117551	9.947189	8.958146							1.313	113.7	Require five-degree angular stability before accepting the gated third Tukey refinement
+170	discard	17.468493		9.908448	12.309209	25.231944	38.116983	10.107333	9.137041							1.326	97.5	Require sufficient effective sample support before accepting the gated third Tukey refinement
+171	discard	17.330179		9.605267	12.262612	25.234791	38.117798	9.89015	8.870455							1.33	97.6	Require a modest 32-sample effective support before accepting the thin-sheet third Tukey refinement
+172	discard	17.402337		9.758511	12.301859	25.232165	38.117027	9.998885	9.005575							1.323	113.7	Replace hard third-refinement acceptance with a residual-thickness confidence blend
+173	discard	17.326664		9.603879	12.24604	25.235065	38.117422	9.890887	8.866692							1.371	100.8	Relax only the gated third Tukey-biweight cutoff from 2.77 to 3.23 weighted-MAD sigmas
+174	discard	17.337933		9.618338	12.283833	25.234492	38.117446	9.893257	8.880232							1.325	113.5	Tighten only the thin-sheet third Tukey cutoff from 2.77 to 2.31 weighted-MAD sigmas
+175	discard	17.357907		9.65943	12.295685	25.231883	38.116955	9.914398	8.929092							1.321	103.6	Tighten the third-refinement sheet-thickness gate from 0.10 to 0.075 local radii
+176	discard	17.315233		9.551232	12.224061	25.257705	38.131877	9.881528	8.844993							1.317	102.0	Relax the third-refinement sheet-thickness gate from 0.10 to 0.15 local radii
+177	discard	17.353052		9.649153	12.264514	25.234195	38.117551	9.93056	8.922338							1.342	113.7	Require local residual thickness to contract from the broad PCA thickness before accepting the third Tukey refinement
+178	discard	17.34545		9.640577	12.277961	25.232461	38.11733	9.902286	8.902085							1.41	105.6	Require the third Tukey refinement to reduce query-local robust residual thickness
+179	discard	17.324384		9.594334	12.266139	25.235171	38.117514	9.876608	8.856538							1.314	97.4	Reduce only the gated third Tukey refinement from 128 to 112 neighbors
+180	discard	17.327358		9.600688	12.264057	25.234886	38.117513	9.883767	8.863238							1.352	105.5	Reduce only the gated third Tukey refinement from 128 to 120 neighbors
+181	discard	17.328536		9.602846	12.263314	25.23485	38.117481	9.886134	8.866591							1.326	113.3	Reduce only the gated third Tukey refinement from 128 to 124 neighbors
+182	discard	17.329265		9.604741	12.263055	25.234837	38.117491	9.887678	8.867787							1.318	97.5	Reduce only the gated third Tukey refinement from 128 to 126 neighbors
+183	crash																	Reduce only the gated third Tukey refinement from 128 to 127 neighbors
+184	discard	17.329567		9.605331	12.263111	25.234796	38.117559	9.888212	8.868392							1.32	105.6	Reduce only the gated third Tukey refinement from 128 to 127 neighbors
+185	discard	17.327463		9.599366	12.261783	25.234467	38.117465	9.88944	8.862256							1.352	105.8	Narrow only the gated third Tukey-refinement Gaussian bandwidth from the 112th- to the 108th-neighbor radius
+186	discard	17.329164		9.602611	12.262517	25.234779	38.117558	9.891861	8.865658							1.357	97.5	Narrow only the gated third Tukey-refinement Gaussian bandwidth from the 112th- to the 110th-neighbor radius
+187	discard	17.332846		9.61052	12.26566	25.234789	38.117544	9.895358	8.873206							1.381	98.0	Widen only the gated third Tukey-refinement Gaussian bandwidth from the 112th- to the 116th-neighbor radius
+188	discard	17.32671		9.599492	12.262389	25.234808	38.117567	9.883025	8.862977							1.431	113.5	Narrow only the gated third Tukey covariance kernel while retaining the established residual-statistic kernel
+189	discard	17.330437		9.605445	12.262445	25.234419	38.11745	9.895384	8.867477							1.372	113.7	Narrow only the gated third Tukey residual-statistic kernel from the 112th- to the 108th-neighbor radius
+190	discard	17.330623		9.605482	12.262717	25.234749	38.117551	9.894948	8.86829							1.362	113.7	Narrow only the gated third-pass residual-statistic bandwidth from neighbor 112 to neighbor 110
+191	discard	17.330027		9.605104	12.265362	25.234824	38.117559	9.8892	8.868113							1.331	106.6	Widen only the gated third-pass residual-statistic bandwidth from neighbor 112 to neighbor 116
+192	discard	17.32966		9.605558	12.26303	25.234757	38.117551	9.888752	8.868309							1.265	110.5	Compute the gated third Tukey refinement only for patches that pass the retained thin-sheet test
+193	crash																	Normalize the gated third Tukey refinement by robust in-plane patch scale
+194	discard	17.356628		9.656448	12.288524	25.232068	38.117025	9.933014	8.912691							1.348	100.9	Normalize the gated third Tukey refinement by robust in-plane patch scale
+195	discard	17.325779		9.594492	12.248458	25.236975	38.117798	9.884607	8.872345							1.345	97.6	Gate the third Tukey refinement at a 0.20 robust thickness-to-tangent-spread ratio
+196	crash																	Gate the third Tukey refinement at a 0.175 robust thickness-to-tangent-spread ratio
+197	discard	17.337499		9.611425	12.27313	25.234074	38.117365	9.908857	8.880141							1.323	97.7	Gate the third Tukey refinement at a 0.175 robust thickness-to-tangent-spread ratio
+198	discard	17.323682		9.592174	12.256061	25.23867	38.122098	9.873059	8.860028							1.351	106.7	Normalize the third-refinement thickness gate by the 32-neighbor robust-statistic core radius
+199	discard	17.331321		9.606043	12.25966	25.23502	38.118951	9.893748	8.874505							1.325	111.5	Normalize the third-refinement thickness gate by the robust core's weighted tangent RMS spread
+200	discard	17.343974		9.629928	12.26303	25.234757	38.117551	9.918406	8.900174							1.344	113.5	Reject the thin-sheet third Tukey refinement when the preceding robust step collapses residual scale by more than half
+201	discard	17.357823		9.704113	12.261015	25.232777	38.117315	9.918362	8.913355							1.329	97.6	Require the gated third Tukey refinement to retain at least half of its Gaussian spatial weight mass
+202	discard	17.32966		9.605558	12.26303	25.234757	38.117551	9.888752	8.868309							1.336	113.5	Require the thin-sheet third Tukey refinement to retain at least one quarter of its Gaussian spatial weight mass
+203	discard	17.329801		9.605721	12.26303	25.234751	38.117551	9.888205	8.869547							1.323	97.5	Require the thin-sheet third Tukey refinement to retain at least three eighths of its Gaussian spatial weight mass
+204	discard	17.333353		9.613195	12.263601	25.233431	38.117593	9.893689	8.878611							1.307	103.8	Require the thin-sheet third Tukey refinement to retain at least seven sixteenths of its Gaussian spatial weight mass
+205	discard	17.343442		9.650989	12.261357	25.232841	38.117279	9.904003	8.894185							1.344	113.5	Require the thin-sheet third Tukey refinement to retain at least fifteen thirty-seconds of its Gaussian spatial weight mass
+206	discard	17.347649		9.669655	12.260248	25.232784	38.117281	9.90829	8.897635							1.349	97.5	Require the thin-sheet third Tukey refinement to retain at least 31/64 of its Gaussian spatial weight mass
+207	discard	17.374089		9.701372	12.270989	25.233929	38.11707	9.943041	8.978133							1.317	97.3	Use bounded-influence Cauchy weighting instead of redescending Tukey rejection only in the gated third refinement
+208	discard	17.41		9.803496	12.289243	25.234063	38.11777	9.994442	9.020988							1.32	102.8	Mix 5% unrejected Gaussian support into only the gated third Tukey refinement
+209	discard	17.326065		9.603603	12.241612	25.235232	38.117592	9.892427	8.865926							1.321	104.8	Use a linear compact-support residual taper only in the gated third robust refinement
+210	discard	17.327167		9.602606	12.25325	25.234946	38.117585	9.889049	8.865566							1.368	96.5	Use a three-halves compact-support residual taper only in the gated third robust refinement
+211	discard	17.32831		9.603769	12.258362	25.234844	38.117569	9.88864	8.866678							1.38	113.7	Use a seven-fourths compact-support residual taper only in the gated third robust refinement
+212	discard	17.328965		9.6046	12.260749	25.234799	38.11756	9.888641	8.86744							1.481	97.4	Use a fifteen-eighths compact-support residual taper only in the gated third robust refinement
+213	discard	17.329308		9.605065	12.261903	25.234778	38.117555	9.888684	8.867862							1.37	113.6	Use a 31/16 compact-support residual taper only in the gated third robust refinement
+214	discard	17.329483		9.605308	12.26247	25.234768	38.117553	9.888715	8.868083							1.334	97.5	Use a 63/32 compact-support residual taper only in the gated third robust refinement
+215	discard	17.329571		9.605432	12.262751	25.234762	38.117552	9.888733	8.868195							1.367	113.7	Use a 127/64 compact-support residual taper only in the gated third robust refinement
+216	discard	17.329615		9.605495	12.262891	25.23476	38.117551	9.888742	8.868252							1.339	105.5	Use a 255/128 compact-support residual taper only in the gated third robust refinement
+217	discard	17.336571		9.540666	12.214118	25.364019	38.220553	9.861487	8.818585							1.348	97.5	Relax the third-refinement sheet-thickness gate from 0.10 to 0.20 local radii
+218	discard	17.320524		9.544197	12.220812	25.299309	38.160144	9.871132	8.827551							1.394	113.6	Relax the third-refinement sheet-thickness gate from 0.10 to 0.175 local radii
+219	discard	17.314503		9.546256	12.213609	25.276449	38.144447	9.879537	8.826722							1.324	98.5	Relax the third-refinement sheet-thickness gate from 0.10 to 0.1625 local radii
+220	discard	17.315961		9.54679	12.224038	25.270908	38.136818	9.884725	8.832485							1.336	109.3	Relax the third-refinement sheet-thickness gate from 0.10 to 0.15625 local radii
+221	discard	17.317878		9.544197	12.222224	25.284826	38.15634	9.872957	8.826722							1.349	97.4	Relax the third-refinement sheet-thickness gate from 0.10 to 0.16875 local radii
+222	discard	17.317114		9.54656	12.221437	25.279114	38.150573	9.87828	8.826722							1.351	113.5	Relax the third-refinement sheet-thickness gate from 0.10 to 0.165625 local radii
+223	discard	17.315156		9.5464	12.217109	25.273021	38.140074	9.883626	8.830707							1.349	97.5	Relax the third-refinement sheet-thickness gate from 0.10 to 0.159375 local radii
+224	discard	17.315522		9.546256	12.218626	25.274106	38.140563	9.883614	8.829967							1.384	97.4	Relax the third-refinement sheet-thickness gate from 0.10 to 0.1609375 local radii
+225	discard	17.344199		9.640021	12.275525	25.233398	38.11711	9.906791	8.892348							1.387	113.6	Tighten the third-refinement sheet-thickness gate from 0.10 to 0.0875 local radii
+226	discard	17.337041		9.622879	12.267609	25.233492	38.117261	9.893317	8.887686							1.363	105.5	Tighten the third-refinement sheet-thickness gate from 0.10 to 0.09375 local radii
+227	discard	17.335149		9.617092	12.269493	25.233702	38.117547	9.892052	8.881011							1.369	113.6	Tighten the third-refinement sheet-thickness gate from 0.10 to 0.096875 local radii
+228	discard	17.331258		9.611026	12.267729	25.233906	38.117559	9.885978	8.871349							1.33	97.4	Tighten the third-refinement sheet-thickness gate from 0.10 to 0.0984375 local radii
+229	discard	17.33415		9.621588	12.264857	25.234654	38.117959	9.886814	8.87903							1.324	97.6	Leave the query sample out of the gated third-pass residual location and scale statistics
+230	discard	17.332469		9.618943	12.265039	25.234376	38.117875	9.883964	8.874615							1.492	103.3	Exclude the query only from the third-refinement thin-sheet confidence statistic
+231	discard	17.329494		9.60987	12.26471	25.234454	38.117833	9.877728	8.872367							1.375	97.4	Give the query half weight only in the third-refinement thin-sheet confidence statistic
+232	discard	17.329342		9.611495	12.262514	25.234105	38.1177	9.879615	8.870621							1.372	111.6	Give the query three-quarter weight only in the third-refinement thin-sheet confidence statistic
+233	discard	17.329674		9.608197	12.262859	25.233989	38.1177	9.884769	8.870532							1.365	97.5	Give the query seven-eighths weight only in the third-refinement thin-sheet confidence statistic
+234	discard	17.329945		9.605558	12.264523	25.234812	38.117537	9.886504	8.870732							1.361	97.5	Give the query fifteen-sixteenths weight only in the third-refinement thin-sheet confidence statistic
+235	discard	17.320824		9.589322	12.245621	25.236456	38.11965	9.882215	8.851679							1.316	113.5	Relax the third-refinement sheet-thickness gate from 0.10 to 0.1125 local radii
+236	discard	17.327213		9.595848	12.263957	25.235364	38.117961	9.890594	8.859552							1.346	113.5	Relax the third-refinement sheet-thickness gate from 0.10 to 0.10625 local radii
+237	discard	17.360576		9.672613	12.279532	25.231956	38.116983	9.922092	8.940281							1.381	105.1	Estimate the gated third Tukey refinement's residual location and scale from 64 rather than 32 neighbors
+238	discard	17.344392		9.617908	12.261198	25.232055	38.117122	9.918962	8.919104							1.4	97.6	Estimate the gated third Tukey refinement's residual statistics from 48 rather than 32 neighbors
+239	discard	17.340841		9.620207	12.274316	25.232516	38.117112	9.902311	8.898583							1.348	97.4	Estimate gated third-pass Tukey residual statistics from 40 rather than 32 neighbors
+240	discard	17.333056		9.608002	12.260781	25.234071	38.116848	9.899663	8.878973							1.338	97.3	Estimate gated third-pass Tukey residual statistics from 36 rather than 32 neighbors
+241	discard	17.335595		9.621025	12.265166	25.234736	38.117047	9.895294	8.880305							1.305	97.3	Estimate gated third-pass Tukey residual statistics from 34 rather than 32 neighbors
+242	discard	17.33031		9.604796	12.26443	25.234888	38.117221	9.881566	8.878958							1.329	105.4	Estimate gated third-pass Tukey residual statistics from 33 rather than 32 neighbors
+243	discard	17.33423		9.61454	12.262265	25.232095	38.116983	9.901821	8.877677							1.331	97.6	Estimate the gated third-pass Tukey residual median from 32 neighbors and MAD scale from 48 neighbors
+244	discard	17.345937		9.639504	12.267656	25.234162	38.117186	9.907146	8.909967							1.35	97.6	Estimate the gated third-pass Tukey residual median from 48 neighbors while retaining the 32-neighbor MAD scale
+245	discard	17.32896		9.598766	12.252816	25.232209	38.116955	9.890949	8.882064							1.344	97.5	Estimate the gated third-pass Tukey residual median from 32 neighbors and MAD scale from 40 neighbors
+246	discard	17.327019		9.592482	12.256735	25.232671	38.116963	9.890459	8.872802							1.311	113.4	Estimate the gated third-pass Tukey residual median from 32 neighbors and MAD scale from 36 neighbors
+247	discard	17.329056		9.601321	12.263797	25.234564	38.117101	9.885435	8.872118							1.349	98.6	Estimate the gated third-pass Tukey residual median from 32 neighbors and MAD scale from 34 neighbors
+248	discard	17.329052		9.60127	12.264697	25.234791	38.117361	9.879197	8.876995							1.324	97.5	Estimate the gated third-pass Tukey residual median from 32 neighbors and MAD scale from 33 neighbors
+249	discard	17.329164		9.603701	12.263346	25.234025	38.117598	9.885544	8.870772							1.328	97.6	Estimate the gated third-pass Tukey residual median from 32 neighbors and MAD scale from 31 neighbors
+250	discard	17.331108		9.611037	12.258614	25.233886	38.117809	9.891531	8.873772							1.304	97.6	Estimate the gated third-pass Tukey residual median from 32 neighbors and MAD scale from 30 neighbors
+251	discard	17.326848		9.605208	12.25192	25.234174	38.118592	9.880477	8.870717							1.337	113.8	Estimate the gated third-pass Tukey residual median from 32 neighbors and MAD scale from 28 neighbors
+252	discard	17.324242		9.588811	12.248149	25.237218	38.12077	9.88295	8.867557							1.329	97.5	Estimate the gated third-pass Tukey residual median from 32 neighbors and MAD scale from 24 neighbors
+253	discard	17.323119		9.575824	12.246229	25.249751	38.131139	9.872237	8.863531							1.316	113.6	Estimate the gated third-pass Tukey residual median from 32 neighbors and MAD scale from 16 neighbors
+254	discard	17.354662		9.624826	12.253864	25.29179	38.159539	9.899526	8.898428							1.43	113.6	Estimate the gated third-pass Tukey residual median from 32 neighbors and MAD scale from 8 neighbors
+255	discard	17.330355		9.605103	12.23938	25.265469	38.133629	9.873925	8.864627							1.3	97.5	Estimate the gated third-pass Tukey residual median from 32 neighbors and MAD scale from 12 neighbors
+256	discard	17.327579		9.586706	12.249061	25.254825	38.131833	9.87791	8.865139							1.307	113.6	Estimate the gated third-pass Tukey residual median from 32 neighbors and MAD scale from 14 neighbors
+257	discard	17.327728		9.588346	12.250896	25.252743	38.128205	9.87549	8.870689							1.347	113.5	Estimate the gated third-pass Tukey residual median from 32 neighbors and MAD scale from 15 neighbors
+258	discard	17.323664		9.59089	12.244709	25.242422	38.122802	9.870005	8.871154							1.323	97.5	Estimate the gated third-pass Tukey residual median from 32 neighbors and MAD scale from 20 neighbors
+259	discard	17.324954		9.585831	12.253833	25.239934	38.121243	9.878478	8.870404							1.301	106.2	Estimate the gated third-pass Tukey residual median from 32 neighbors and MAD scale from 22 neighbors
+260	discard	17.328802		9.598257	12.262551	25.237472	38.121031	9.8796	8.873898							1.308	97.6	Estimate the gated third-pass Tukey residual median from 32 neighbors and MAD scale from 23 neighbors
+261	discard	17.32634		9.58976	12.260373	25.241084	38.122487	9.874721	8.869614							1.334	113.5	Estimate the gated third-pass Tukey residual median from 32 neighbors and MAD scale from 21 neighbors
+262	discard	17.436978		9.847982	12.307031	25.231909	38.117244	10.058445	9.059256							1.317	105.8	Require a material robust residual offset before accepting the thin-sheet third Tukey refinement
+263	discard	17.331623		9.607193	12.26303	25.234757	38.117551	9.894179	8.87303							1.331	105.7	Accept the thin-sheet third Tukey refinement only when consecutive normal corrections have consistent direction
+264	crash																	Accept the thin-sheet third Tukey refinement only when it improves the normal eigengap
+265	discard	17.334714		9.608175	12.271304	25.234517	38.117422	9.898957	8.877909							1.325	97.5	Accept the thin-sheet third Tukey refinement only when it improves the normal eigengap
+266	discard	17.365505		9.695215	12.277438	25.233883	38.117065	9.933889	8.935544							1.47	113.7	Require split-half normal stability before accepting the thin-sheet third Tukey refinement
+267	discard	17.341269		9.632204	12.266588	25.234451	38.117487	9.905106	8.891776							1.323	114.4	Shrink the gated third-pass robust covariance 10% toward the preceding two-step covariance
+268	discard	17.33535		9.618649	12.264755	25.234604	38.117518	9.896719	8.879856							1.316	105.3	Shrink the gated third-pass covariance 5% toward the preceding two-step covariance
+269	discard	17.332476		9.612045	12.263879	25.23468	38.117534	9.892682	8.874036							1.319	113.5	Shrink the gated third-pass covariance 2.5% toward the preceding two-step covariance
+270	discard	17.331061		9.608787	12.263451	25.234719	38.117543	9.890704	8.871161							1.337	105.3	Shrink the gated third-pass covariance 1.25% toward the preceding two-step covariance
+271	discard	17.330358		9.607169	12.26324	25.234738	38.117547	9.889724	8.869732							1.369	113.5	Shrink the gated third-pass covariance 0.625% toward the preceding two-step covariance
+272	discard	17.330009		9.606363	12.263135	25.234748	38.117549	9.889237	8.86902							1.372	97.5	Shrink the gated third-pass covariance 0.3125% toward the preceding two-step covariance
+273	discard	17.329834		9.60596	12.263083	25.234752	38.11755	9.888994	8.868664							1.324	95.5	Shrink the gated third-pass covariance 0.15625% toward the preceding two-step covariance
+274	discard	17.329747		9.605759	12.263056	25.234755	38.11755	9.888873	8.868487							1.349	97.4	Shrink the gated third-pass covariance 0.078125% toward the preceding two-step covariance
+275	discard	17.324171		9.592522	12.261247	25.234918	38.117584	9.881032	8.857723							1.32	97.7	Extrapolate the accepted thin-sheet third Tukey normal 5% beyond its two-step correction
+276	discard	17.318931		9.579969	12.259576	25.23508	38.117618	9.873772	8.847574							1.34	97.6	Extrapolate accepted thin-sheet third-step normal corrections by 10%
+277	discard	17.309203		9.556325	12.25657	25.235409	38.117687	9.860635	8.828594							1.433	102.6	Extrapolate accepted thin-sheet third-step normal corrections by 20%
+278	discard	17.29277		9.514963	12.251908	25.236088	38.11783	9.839899	8.795931							1.367	111.7	Extrapolate accepted thin-sheet third-step normal corrections by 40%
+279	keep	17.268683	14.444381	9.439152	12.248003	25.237526	38.11814	9.817447	8.751832	10.825132	11.577301	18.087696	25.313388	11.383021	9.479746	1.332	105.2	Extrapolate accepted thin-sheet third-step normal corrections by 80%
+280	discard	17.267139		9.380535	12.261715	25.240721	38.118848	9.854724	8.746291							1.337	113.7	Extrapolate accepted thin-sheet third-step normal corrections by 160%
+281	discard	17.260117		9.393665	12.251301	25.239071	38.118479	9.822537	8.735649							1.329	97.4	Extrapolate accepted thin-sheet third-step normal corrections by 120%
+282	discard	17.26241		9.412314	12.248755	25.238286	38.118306	9.816494	8.740304							1.375	104.6	Extrapolate accepted thin-sheet third-step normal corrections by 100%
+283	discard	17.265045		9.424707	12.248154	25.237903	38.118222	9.816084	8.745201							1.361	105.2	Extrapolate accepted thin-sheet third-step normal corrections by 90%
+284	discard	17.266738		9.431673	12.248022	25.237714	38.118181	9.816542	8.748299							1.384	113.7	Extrapolate accepted thin-sheet third-step normal corrections by 85%
+285	discard	17.267679		9.435348	12.247998	25.23762	38.11816	9.816939	8.750011							1.32	105.4	Extrapolate accepted thin-sheet third-step normal corrections by 82.5%
+286	discard	17.275221		9.478318	12.244978	25.235711	38.117855	9.816195	8.758271							1.338	105.6	Extrapolate the gated third-step normal only when Tukey rejection retains at least half of the Gaussian weight mass
+287	discard	17.268636		9.440355	12.247503	25.236991	38.118088	9.816755	8.752122							1.338	97.8	Smoothly scale third-step normal extrapolation by retained Tukey weight mass
+288	discard	17.268709		9.437873	12.247876	25.237531	38.11814	9.818261	8.752574							1.321	113.8	Extrapolate accepted third-step normal corrections along the unit sphere
+289	discard	17.234654		9.450026	12.268716	25.120054	37.991191	9.822333	8.755606							1.308	98.0	Blend 5% of the broad provisional PCA normal into non-thin local patches
+290	discard	17.251486		9.444616	12.258129	25.178433	38.054198	9.819826	8.753711							1.361	103.3	Blend 2.5% of the broad provisional PCA normal into non-thin local patches
+291	discard	17.260055		9.441967	12.253008	25.207909	38.086056	9.81862	8.75277							1.342	97.8	Blend 1.25% of the broad provisional PCA normal into non-thin local patches
+292	discard	17.264357		9.440555	12.250491	25.22269	38.102077	9.81803	8.752301							1.326	113.9	Blend 0.625% of the broad provisional PCA normal into non-thin local patches
+293	discard	17.266518		9.439852	12.249243	25.230101	38.110109	9.817737	8.752066							1.321	97.7	Blend 0.3125% of the broad provisional PCA normal into non-thin local patches
+294	discard	17.267601		9.439502	12.248622	25.233812	38.114127	9.817592	8.751949							1.331	97.8	Blend 0.15625% of the broad provisional PCA normal into non-thin local patches
+295	discard	17.268142		9.439327	12.248312	25.235669	38.116133	9.817519	8.751891							1.336	113.0	Blend 0.078125% of the broad provisional PCA normal into non-thin local patches
+296	discard	17.268412		9.439239	12.248157	25.236598	38.117136	9.817483	8.751862							1.343	97.6	Blend 0.0390625% of the broad provisional PCA normal into non-thin local patches
+297	discard	17.233266		9.443386	12.25584	25.128747	37.998705	9.817947	8.754973							1.36	97.7	Smoothly increase broad-normal stabilization with robust residual thickness on non-thin patches
+298	discard	17.238113		9.44065	12.249274	25.149559	38.019027	9.81809	8.752079							1.337	105.2	Blend 5% of the broad provisional normal only into very thick local patches
+299	discard	17.248998		9.373818	12.26244	25.239846	38.11837	9.811803	8.687711							1.67	103.6	Add a fourth Tukey-PCA refinement on thin coherent sheets before extrapolating the final normal correction
+300	discard	17.252996		9.394496	12.253148	25.238649	38.11824	9.803402	8.710038							1.557	104.2	Blend half of a fourth Tukey-PCA continuation into the retained thin-sheet normal
+301	discard	17.25939		9.413873	12.250047	25.238079	38.118186	9.807619	8.728539							1.557	95.8	Blend one quarter of a fourth Tukey-PCA continuation into the retained thin-sheet normal
+302	discard	17.263678		9.425783	12.248892	25.2378	38.118162	9.811834	8.739593							1.559	95.7	Blend one eighth of a fourth Tukey-PCA continuation into the retained thin-sheet normal
+303	discard	17.266091		9.432286	12.248414	25.237663	38.118151	9.814467	8.745565							1.548	111.9	Blend one sixteenth of a fourth Tukey-PCA continuation into the retained thin-sheet normal
+304	discard	17.267365		9.435674	12.2482	25.237594	38.118145	9.815913	8.748662							1.574	100.1	Blend one thirty-second of a fourth Tukey-PCA continuation into the retained thin-sheet normal
+305	discard	17.268018		9.437401	12.248099	25.23756	38.118142	9.816669	8.750238							1.55	111.9	Blend one sixty-fourth of a fourth Tukey-PCA continuation into the retained thin-sheet normal
+306	crash																	agent invocation failed
+307	discard	17.270633		9.442336	12.24803	25.237492	38.118204	9.821941	8.755795							1.321	113.8	Scale thin-sheet third-normal extrapolation by agreement between consecutive robust PCA corrections
+308	discard	17.261952		9.405496	12.25244	25.239026	38.118301	9.818021	8.738428							1.327	106.1	Add 25% directional momentum from the preceding Tukey-PCA normal correction on accepted thin sheets
+309	discard	17.267936		9.454016	12.250176	25.237526	38.11814	9.808182	8.739579							1.31	97.6	Cap the retained third-normal extrapolation to a five-degree unit-normal chord
+310	discard	17.276722		9.479095	12.240926	25.237544	38.11805	9.814606	8.770114							1.354	107.4	Extrapolate the thin-sheet third Tukey correction only when successive normal-update magnitudes contract
+311	discard	17.279924		9.484289	12.261489	25.234758	38.117537	9.807737	8.773733							1.389	110.3	Apply 80% third-normal extrapolation only to very thin accepted sheets
+312	discard	17.274757		9.464266	12.251532	25.23582	38.117738	9.816091	8.763095							1.323	97.6	Linearly taper third-normal extrapolation across marginally thin sheets
+313	crash																	Extrapolate only the component of the third Tukey-PCA correction orthogonal to the preceding correction
+314	discard	17.335016		9.612266	12.262943	25.235493	38.11719	9.901131	8.88107							1.325	105.8	Orthogonalize thin-sheet third-normal extrapolation against the preceding robust PCA update
+315	discard	17.270819		9.445686	12.248607	25.237454	38.118194	9.820826	8.754147							1.327	113.9	Extrapolate only the persistent component shared by consecutive thin-sheet Tukey-PCA normal corrections
+316	discard	17.268951		9.441845	12.248253	25.237489	38.118166	9.816789	8.751162							1.328	105.6	Half-damp only the transverse component of thin-sheet third-normal extrapolation
+317	discard	17.268773		9.440417	12.248115	25.237508	38.118152	9.817025	8.751423							1.341	105.6	Quarter-damp the transverse component of thin-sheet third-normal extrapolation
+318	crash																	Damp the transverse component of thin-sheet third-normal extrapolation from 80% to 70%
+319	discard	17.268717		9.439764	12.248056	25.237517	38.118146	9.817212	8.751609							1.353	106.1	Damp the transverse component of thin-sheet third-normal extrapolation from 80% to 70%
+320	discard	17.268698		9.439453	12.248028	25.237522	38.118143	9.817324	8.751716							1.428	106.7	Damp the transverse component of thin-sheet third-normal extrapolation from 80% to 75%
+321	discard	17.26869		9.439301	12.248015	25.237524	38.118141	9.817384	8.751773							1.341	105.9	Damp the transverse component of thin-sheet third-normal extrapolation from 80% to 77.5%
+322	crash																	Damp the transverse component of thin-sheet third-normal extrapolation from 80% to 78.75%

@@ -1,746 +1,746 @@
 {
   "tier": "test",
-  "rmse": 14.360944702279184,
+  "rmse": 16.260480693795568,
   "conditions": {
     "clean": {
-      "rmse": 9.133458705182631,
+      "rmse": 12.280699331929064,
       "pgp": {
-        "5": 0.777821052631579,
-        "10": 0.8643578947368421,
-        "15": 0.9035052631578947,
-        "20": 0.9273578947368422,
-        "25": 0.9436631578947369,
-        "30": 0.956221052631579
+        "5": 0.6202,
+        "10": 0.7419368421052631,
+        "15": 0.8190526315789474,
+        "20": 0.871421052631579,
+        "25": 0.9075368421052632,
+        "30": 0.9325368421052631
       },
       "queries": 95000,
       "shapes": 19
     },
     "low": {
-      "rmse": 10.434996898794722,
+      "rmse": 12.8645147815589,
       "pgp": {
-        "5": 0.7329789473684211,
-        "10": 0.8369368421052632,
-        "15": 0.8839789473684211,
-        "20": 0.9137157894736843,
-        "25": 0.9342736842105264,
-        "30": 0.9485052631578947
+        "5": 0.6156842105263158,
+        "10": 0.7379368421052631,
+        "15": 0.8129263157894737,
+        "20": 0.8659684210526316,
+        "25": 0.9014736842105263,
+        "30": 0.9265052631578947
       },
       "queries": 95000,
       "shapes": 19
     },
     "medium": {
-      "rmse": 18.199674074041422,
+      "rmse": 18.39686000026041,
       "pgp": {
-        "5": 0.38769473684210526,
-        "10": 0.6431052631578947,
-        "15": 0.7450315789473684,
-        "20": 0.8061789473684211,
-        "25": 0.8480631578947369,
-        "30": 0.8776842105263158
+        "5": 0.41753684210526315,
+        "10": 0.639421052631579,
+        "15": 0.7347789473684211,
+        "20": 0.7961368421052631,
+        "25": 0.8392736842105263,
+        "30": 0.8710421052631578
       },
       "queries": 95000,
       "shapes": 19
     },
     "high": {
-      "rmse": 27.181188227225604,
+      "rmse": 27.606021827139813,
       "pgp": {
-        "5": 0.1365157894736842,
-        "10": 0.37409473684210526,
-        "15": 0.5466631578947369,
-        "20": 0.6514210526315789,
-        "25": 0.7219578947368421,
-        "30": 0.7708842105263158
+        "5": 0.1531578947368421,
+        "10": 0.3905368421052632,
+        "15": 0.5499684210526316,
+        "20": 0.6486526315789474,
+        "25": 0.7142631578947368,
+        "30": 0.7611263157894737
       },
       "queries": 95000,
       "shapes": 19
     },
     "stripe": {
-      "rmse": 11.32862698831548,
+      "rmse": 13.629344347187295,
       "pgp": {
-        "5": 0.7446625,
-        "10": 0.84355,
-        "15": 0.88715,
-        "20": 0.914925,
-        "25": 0.9340625,
-        "30": 0.9482375
+        "5": 0.618075,
+        "10": 0.7385375,
+        "15": 0.8105625,
+        "20": 0.8613625,
+        "25": 0.8973125,
+        "30": 0.9242
       },
       "queries": 80000,
       "shapes": 16
     },
     "gradient": {
-      "rmse": 9.88772332011525,
+      "rmse": 12.785443874697936,
       "pgp": {
-        "5": 0.780325,
-        "10": 0.875175,
-        "15": 0.912375,
-        "20": 0.9336,
-        "25": 0.9474125,
-        "30": 0.957825
+        "5": 0.6353125,
+        "10": 0.762825,
+        "15": 0.8328625,
+        "20": 0.8789625,
+        "25": 0.911025,
+        "30": 0.9332
       },
       "queries": 80000,
       "shapes": 16
     }
   },
-  "runtime_s": 12.986396583000896,
-  "peak_memory_mb": 288.4375,
+  "runtime_s": 2.5501480830134824,
+  "peak_memory_mb": 181.34375,
   "queries": 540000,
   "shapes": 108,
   "shape_results": [
     {
       "name": "galera100k",
       "condition": "clean",
-      "rmse": 13.350689506349163,
+      "rmse": 16.870870076265422,
       "queries": 5000
     },
     {
       "name": "icosahedron100k",
       "condition": "clean",
-      "rmse": 3.384556998758524,
+      "rmse": 5.993646896485523,
       "queries": 5000
     },
     {
       "name": "netsuke100k",
       "condition": "clean",
-      "rmse": 14.832255239621203,
+      "rmse": 18.052358782006888,
       "queries": 5000
     },
     {
       "name": "Cup34100k",
       "condition": "clean",
-      "rmse": 4.171338644719123,
+      "rmse": 8.311077414614255,
       "queries": 5000
     },
     {
       "name": "sphere100k",
       "condition": "clean",
-      "rmse": 0.8447452435178261,
+      "rmse": 0.8150351668993865,
       "queries": 5000
     },
     {
       "name": "cylinder100k",
       "condition": "clean",
-      "rmse": 4.292452443803417,
+      "rmse": 7.250171671419585,
       "queries": 5000
     },
     {
       "name": "star_smooth100k",
       "condition": "clean",
-      "rmse": 4.777411992893662,
+      "rmse": 5.0296106208964275,
       "queries": 5000
     },
     {
       "name": "star_halfsmooth100k",
       "condition": "clean",
-      "rmse": 8.111086785192551,
+      "rmse": 10.458038951072517,
       "queries": 5000
     },
     {
       "name": "star_sharp100k",
       "condition": "clean",
-      "rmse": 12.586687903622266,
+      "rmse": 19.175990758970826,
       "queries": 5000
     },
     {
       "name": "Liberty100k",
       "condition": "clean",
-      "rmse": 23.210509403736168,
+      "rmse": 27.855194909756126,
       "queries": 5000
     },
     {
       "name": "boxunion2100k",
       "condition": "clean",
-      "rmse": 9.307102969132155,
+      "rmse": 15.130577871680721,
       "queries": 5000
     },
     {
       "name": "pipe100k",
       "condition": "clean",
-      "rmse": 4.25319873824728,
+      "rmse": 7.427835732083746,
       "queries": 5000
     },
     {
       "name": "pipe_curve100k",
       "condition": "clean",
-      "rmse": 4.56608520219375,
+      "rmse": 7.085405595644987,
       "queries": 5000
     },
     {
       "name": "column100k",
       "condition": "clean",
-      "rmse": 27.60535616875966,
+      "rmse": 29.78149549926652,
       "queries": 5000
     },
     {
       "name": "column_head100k",
       "condition": "clean",
-      "rmse": 30.058069335689634,
+      "rmse": 32.59772934888538,
       "queries": 5000
     },
     {
       "name": "Boxy_smooth100k",
       "condition": "clean",
-      "rmse": 3.5566818805111695,
+      "rmse": 6.200780170769925,
       "queries": 5000
     },
     {
       "name": "sphere_analytic100k",
       "condition": "clean",
-      "rmse": 0.34605861312983305,
+      "rmse": 0.15442815876748528,
       "queries": 5000
     },
     {
       "name": "cylinder_analytic100k",
       "condition": "clean",
-      "rmse": 0.38827879219720707,
+      "rmse": 0.2399487914572186,
       "queries": 5000
     },
     {
       "name": "sheet_analytic100k",
       "condition": "clean",
-      "rmse": 3.893149536395422,
+      "rmse": 14.903090889709278,
       "queries": 5000
     },
     {
       "name": "galera100k_noise_white_1.00e-02",
       "condition": "low",
-      "rmse": 14.260345124383232,
+      "rmse": 17.148138263742055,
       "queries": 5000
     },
     {
       "name": "icosahedron100k_noise_white_1.00e-02",
       "condition": "low",
-      "rmse": 4.150234409248518,
+      "rmse": 6.065147220567237,
       "queries": 5000
     },
     {
       "name": "netsuke100k_noise_white_1.00e-02",
       "condition": "low",
-      "rmse": 15.73921212519341,
+      "rmse": 18.40847043399717,
       "queries": 5000
     },
     {
       "name": "Cup34100k_noise_white_1.00e-02",
       "condition": "low",
-      "rmse": 4.558493855100591,
+      "rmse": 8.579570642827914,
       "queries": 5000
     },
     {
       "name": "sphere100k_noise_white_1.00e-02",
       "condition": "low",
-      "rmse": 1.2457088188102086,
+      "rmse": 1.0687919890617676,
       "queries": 5000
     },
     {
       "name": "cylinder100k_noise_white_1.00e-02",
       "condition": "low",
-      "rmse": 4.732346943095392,
+      "rmse": 7.417825137385252,
       "queries": 5000
     },
     {
       "name": "star_smooth100k_noise_white_1.00e-02",
       "condition": "low",
-      "rmse": 5.4029779874055555,
+      "rmse": 5.346199916461213,
       "queries": 5000
     },
     {
       "name": "star_halfsmooth100k_noise_white_1.00e-02",
       "condition": "low",
-      "rmse": 9.075267644086535,
+      "rmse": 10.868929821105198,
       "queries": 5000
     },
     {
       "name": "star_sharp100k_noise_white_1.00e-02",
       "condition": "low",
-      "rmse": 15.43727894598023,
+      "rmse": 19.677561568046315,
       "queries": 5000
     },
     {
       "name": "Liberty100k_noise_white_1.00e-02",
       "condition": "low",
-      "rmse": 26.14839410366159,
+      "rmse": 28.49656250388054,
       "queries": 5000
     },
     {
       "name": "boxunion2100k_noise_white_1.00e-02",
       "condition": "low",
-      "rmse": 10.485517161649028,
+      "rmse": 15.284364648018741,
       "queries": 5000
     },
     {
       "name": "pipe100k_noise_white_1.00e-02",
       "condition": "low",
-      "rmse": 5.304688265676276,
+      "rmse": 7.577312573289842,
       "queries": 5000
     },
     {
       "name": "pipe_curve100k_noise_white_1.00e-02",
       "condition": "low",
-      "rmse": 5.270904176703501,
+      "rmse": 7.36821789924471,
       "queries": 5000
     },
     {
       "name": "column100k_noise_white_1.00e-02",
       "condition": "low",
-      "rmse": 28.632623288304007,
+      "rmse": 30.214058020049855,
       "queries": 5000
     },
     {
       "name": "column_head100k_noise_white_1.00e-02",
       "condition": "low",
-      "rmse": 30.111521288092955,
+      "rmse": 32.68789418681127,
       "queries": 5000
     },
     {
       "name": "Boxy_smooth100k_noise_white_1.00e-02",
       "condition": "low",
-      "rmse": 4.431541754514708,
+      "rmse": 6.426147949253264,
       "queries": 5000
     },
     {
       "name": "sphere_analytic100k_noise_white_1.00e-02",
       "condition": "low",
-      "rmse": 0.9396519833915491,
+      "rmse": 0.6921616225580982,
       "queries": 5000
     },
     {
       "name": "cylinder_analytic100k_noise_white_1.00e-02",
       "condition": "low",
-      "rmse": 1.3227621721256257,
+      "rmse": 1.0163615179508272,
       "queries": 5000
     },
     {
       "name": "sheet_analytic100k_noise_white_1.00e-02",
       "condition": "low",
-      "rmse": 11.015471029676789,
+      "rmse": 20.08206493536781,
       "queries": 5000
     },
     {
       "name": "galera100k_noise_white_5.00e-02",
       "condition": "medium",
-      "rmse": 22.04807600292008,
+      "rmse": 22.22632395183294,
       "queries": 5000
     },
     {
       "name": "icosahedron100k_noise_white_5.00e-02",
       "condition": "medium",
-      "rmse": 7.9883340030314365,
+      "rmse": 7.825897732824305,
       "queries": 5000
     },
     {
       "name": "netsuke100k_noise_white_5.00e-02",
       "condition": "medium",
-      "rmse": 23.06416139668902,
+      "rmse": 23.12277791586946,
       "queries": 5000
     },
     {
       "name": "Cup34100k_noise_white_5.00e-02",
       "condition": "medium",
-      "rmse": 12.996934268998935,
+      "rmse": 14.540477902425833,
       "queries": 5000
     },
     {
       "name": "sphere100k_noise_white_5.00e-02",
       "condition": "medium",
-      "rmse": 4.264323066343775,
+      "rmse": 3.6750939459161525,
       "queries": 5000
     },
     {
       "name": "cylinder100k_noise_white_5.00e-02",
       "condition": "medium",
-      "rmse": 9.150849877879907,
+      "rmse": 9.261836052585712,
       "queries": 5000
     },
     {
       "name": "star_smooth100k_noise_white_5.00e-02",
       "condition": "medium",
-      "rmse": 10.55101217896118,
+      "rmse": 10.014323881226398,
       "queries": 5000
     },
     {
       "name": "star_halfsmooth100k_noise_white_5.00e-02",
       "condition": "medium",
-      "rmse": 17.365648121025856,
+      "rmse": 17.313927094075908,
       "queries": 5000
     },
     {
       "name": "star_sharp100k_noise_white_5.00e-02",
       "condition": "medium",
-      "rmse": 28.024621215664464,
+      "rmse": 28.136836327460443,
       "queries": 5000
     },
     {
       "name": "Liberty100k_noise_white_5.00e-02",
       "condition": "medium",
-      "rmse": 38.44773483708836,
+      "rmse": 38.54149445078542,
       "queries": 5000
     },
     {
       "name": "boxunion2100k_noise_white_5.00e-02",
       "condition": "medium",
-      "rmse": 19.132395605116578,
+      "rmse": 19.259391006568915,
       "queries": 5000
     },
     {
       "name": "pipe100k_noise_white_5.00e-02",
       "condition": "medium",
-      "rmse": 11.871043310867895,
+      "rmse": 11.550216810433911,
       "queries": 5000
     },
     {
       "name": "pipe_curve100k_noise_white_5.00e-02",
       "condition": "medium",
-      "rmse": 16.139278106314716,
+      "rmse": 17.0221781077243,
       "queries": 5000
     },
     {
       "name": "column100k_noise_white_5.00e-02",
       "condition": "medium",
-      "rmse": 43.8641827686475,
+      "rmse": 43.839044810575395,
       "queries": 5000
     },
     {
       "name": "column_head100k_noise_white_5.00e-02",
       "condition": "medium",
-      "rmse": 34.11990121260722,
+      "rmse": 34.58074020529078,
       "queries": 5000
     },
     {
       "name": "Boxy_smooth100k_noise_white_5.00e-02",
       "condition": "medium",
-      "rmse": 11.644635084320235,
+      "rmse": 11.446485200898701,
       "queries": 5000
     },
     {
       "name": "sphere_analytic100k_noise_white_5.00e-02",
       "condition": "medium",
-      "rmse": 4.173170576771561,
+      "rmse": 3.604912019926345,
       "queries": 5000
     },
     {
       "name": "cylinder_analytic100k_noise_white_5.00e-02",
       "condition": "medium",
-      "rmse": 6.169130565872415,
+      "rmse": 5.5349307723818315,
       "queries": 5000
     },
     {
       "name": "sheet_analytic100k_noise_white_5.00e-02",
       "condition": "medium",
-      "rmse": 24.778375207665903,
+      "rmse": 28.043451816145012,
       "queries": 5000
     },
     {
       "name": "galera100k_noise_white_1.00e-01",
       "condition": "high",
-      "rmse": 31.449796134313875,
+      "rmse": 31.69081425759844,
       "queries": 5000
     },
     {
       "name": "icosahedron100k_noise_white_1.00e-01",
       "condition": "high",
-      "rmse": 12.442019677476152,
+      "rmse": 12.054032738488289,
       "queries": 5000
     },
     {
       "name": "netsuke100k_noise_white_1.00e-01",
       "condition": "high",
-      "rmse": 30.760459893143103,
+      "rmse": 30.873311541631647,
       "queries": 5000
     },
     {
       "name": "Cup34100k_noise_white_1.00e-01",
       "condition": "high",
-      "rmse": 21.103273475835255,
+      "rmse": 22.656872024007846,
       "queries": 5000
     },
     {
       "name": "sphere100k_noise_white_1.00e-01",
       "condition": "high",
-      "rmse": 8.84196825700053,
+      "rmse": 8.276613161120146,
       "queries": 5000
     },
     {
       "name": "cylinder100k_noise_white_1.00e-01",
       "condition": "high",
-      "rmse": 13.729906565166372,
+      "rmse": 13.304596259302226,
       "queries": 5000
     },
     {
       "name": "star_smooth100k_noise_white_1.00e-01",
       "condition": "high",
-      "rmse": 19.481934297388147,
+      "rmse": 19.010303617867233,
       "queries": 5000
     },
     {
       "name": "star_halfsmooth100k_noise_white_1.00e-01",
       "condition": "high",
-      "rmse": 28.432560865151235,
+      "rmse": 28.305393061992078,
       "queries": 5000
     },
     {
       "name": "star_sharp100k_noise_white_1.00e-01",
       "condition": "high",
-      "rmse": 39.866212641606374,
+      "rmse": 40.19418642012167,
       "queries": 5000
     },
     {
       "name": "Liberty100k_noise_white_1.00e-01",
       "condition": "high",
-      "rmse": 47.897138231261266,
+      "rmse": 49.368462387123635,
       "queries": 5000
     },
     {
       "name": "boxunion2100k_noise_white_1.00e-01",
       "condition": "high",
-      "rmse": 27.002003203873553,
+      "rmse": 26.645984182788183,
       "queries": 5000
     },
     {
       "name": "pipe100k_noise_white_1.00e-01",
       "condition": "high",
-      "rmse": 29.78559993180603,
+      "rmse": 30.161516102421263,
       "queries": 5000
     },
     {
       "name": "pipe_curve100k_noise_white_1.00e-01",
       "condition": "high",
-      "rmse": 34.50677363045329,
+      "rmse": 36.05567727247549,
       "queries": 5000
     },
     {
       "name": "column100k_noise_white_1.00e-01",
       "condition": "high",
-      "rmse": 52.48612404153078,
+      "rmse": 53.450663944334586,
       "queries": 5000
     },
     {
       "name": "column_head100k_noise_white_1.00e-01",
       "condition": "high",
-      "rmse": 39.38800094779191,
+      "rmse": 39.78916532337094,
       "queries": 5000
     },
     {
       "name": "Boxy_smooth100k_noise_white_1.00e-01",
       "condition": "high",
-      "rmse": 21.424065468075288,
+      "rmse": 21.263201302337336,
       "queries": 5000
     },
     {
       "name": "sphere_analytic100k_noise_white_1.00e-01",
       "condition": "high",
-      "rmse": 8.968062735426933,
+      "rmse": 8.18299412237615,
       "queries": 5000
     },
     {
       "name": "cylinder_analytic100k_noise_white_1.00e-01",
       "condition": "high",
-      "rmse": 13.047061820939795,
+      "rmse": 12.99028038877508,
       "queries": 5000
     },
     {
       "name": "sheet_analytic100k_noise_white_1.00e-01",
       "condition": "high",
-      "rmse": 35.82961449904667,
+      "rmse": 40.240346607524216,
       "queries": 5000
     },
     {
       "name": "galera100k_ddist_minmax",
       "condition": "gradient",
-      "rmse": 12.244112606042751,
+      "rmse": 14.944423451401036,
       "queries": 5000
     },
     {
       "name": "icosahedron100k_ddist_minmax",
       "condition": "gradient",
-      "rmse": 3.4018972761089503,
+      "rmse": 5.418531808539215,
       "queries": 5000
     },
     {
       "name": "netsuke100k_ddist_minmax",
       "condition": "gradient",
-      "rmse": 11.850528419426269,
+      "rmse": 14.209152211339418,
       "queries": 5000
     },
     {
       "name": "Cup34100k_ddist_minmax",
       "condition": "gradient",
-      "rmse": 4.2820310717904535,
+      "rmse": 6.072048363647613,
       "queries": 5000
     },
     {
       "name": "sphere100k_ddist_minmax",
       "condition": "gradient",
-      "rmse": 0.7933041401680344,
+      "rmse": 0.8258692803835467,
       "queries": 5000
     },
     {
       "name": "cylinder100k_ddist_minmax",
       "condition": "gradient",
-      "rmse": 4.34459676658806,
+      "rmse": 7.058265989561284,
       "queries": 5000
     },
     {
       "name": "star_smooth100k_ddist_minmax",
       "condition": "gradient",
-      "rmse": 4.752663367646087,
+      "rmse": 5.4879244987665,
       "queries": 5000
     },
     {
       "name": "star_halfsmooth100k_ddist_minmax",
       "condition": "gradient",
-      "rmse": 7.553889906953983,
+      "rmse": 10.542381866720223,
       "queries": 5000
     },
     {
       "name": "star_sharp100k_ddist_minmax",
       "condition": "gradient",
-      "rmse": 12.280455824344955,
+      "rmse": 18.843561520980142,
       "queries": 5000
     },
     {
       "name": "Liberty100k_ddist_minmax",
       "condition": "gradient",
-      "rmse": 20.772040970514162,
+      "rmse": 24.783054131401606,
       "queries": 5000
     },
     {
       "name": "boxunion2100k_ddist_minmax",
       "condition": "gradient",
-      "rmse": 10.078453894795377,
+      "rmse": 14.709385440000036,
       "queries": 5000
     },
     {
       "name": "pipe100k_ddist_minmax",
       "condition": "gradient",
-      "rmse": 4.052531596459684,
+      "rmse": 7.793021348958153,
       "queries": 5000
     },
     {
       "name": "pipe_curve100k_ddist_minmax",
       "condition": "gradient",
-      "rmse": 5.071062797943073,
+      "rmse": 8.983465257314334,
       "queries": 5000
     },
     {
       "name": "column100k_ddist_minmax",
       "condition": "gradient",
-      "rmse": 24.040634519138603,
+      "rmse": 27.092328206368446,
       "queries": 5000
     },
     {
       "name": "column_head100k_ddist_minmax",
       "condition": "gradient",
-      "rmse": 29.062123190543343,
+      "rmse": 31.965642272278526,
       "queries": 5000
     },
     {
       "name": "Boxy_smooth100k_ddist_minmax",
       "condition": "gradient",
-      "rmse": 3.6232467733802136,
+      "rmse": 5.8380463475069115,
       "queries": 5000
     },
     {
       "name": "galera100k_ddist_minmax_layers",
       "condition": "stripe",
-      "rmse": 14.65194666497862,
+      "rmse": 17.042782354857955,
       "queries": 5000
     },
     {
       "name": "icosahedron100k_ddist_minmax_layers",
       "condition": "stripe",
-      "rmse": 4.411894761680792,
+      "rmse": 5.704595382223164,
       "queries": 5000
     },
     {
       "name": "netsuke100k_ddist_minmax_layers",
       "condition": "stripe",
-      "rmse": 14.740835545368709,
+      "rmse": 17.31797623536517,
       "queries": 5000
     },
     {
       "name": "Cup34100k_ddist_minmax_layers",
       "condition": "stripe",
-      "rmse": 6.668893538186729,
+      "rmse": 10.64290579364866,
       "queries": 5000
     },
     {
       "name": "sphere100k_ddist_minmax_layers",
       "condition": "stripe",
-      "rmse": 0.8787010333973783,
+      "rmse": 0.8439676818051571,
       "queries": 5000
     },
     {
       "name": "cylinder100k_ddist_minmax_layers",
       "condition": "stripe",
-      "rmse": 4.756280233292238,
+      "rmse": 7.491707102482243,
       "queries": 5000
     },
     {
       "name": "star_smooth100k_ddist_minmax_layers",
       "condition": "stripe",
-      "rmse": 5.169574331952049,
+      "rmse": 5.1908923042945965,
       "queries": 5000
     },
     {
       "name": "star_halfsmooth100k_ddist_minmax_layers",
       "condition": "stripe",
-      "rmse": 9.442755564784909,
+      "rmse": 11.271739463536687,
       "queries": 5000
     },
     {
       "name": "star_sharp100k_ddist_minmax_layers",
       "condition": "stripe",
-      "rmse": 15.117163231169545,
+      "rmse": 20.10873293744865,
       "queries": 5000
     },
     {
       "name": "Liberty100k_ddist_minmax_layers",
       "condition": "stripe",
-      "rmse": 22.800578123724854,
+      "rmse": 26.586552358165576,
       "queries": 5000
     },
     {
       "name": "boxunion2100k_ddist_minmax_layers",
       "condition": "stripe",
-      "rmse": 10.633801499786763,
+      "rmse": 14.929647119427994,
       "queries": 5000
     },
     {
       "name": "pipe100k_ddist_minmax_layers",
       "condition": "stripe",
-      "rmse": 6.361619642897523,
+      "rmse": 8.054734637332164,
       "queries": 5000
     },
     {
       "name": "pipe_curve100k_ddist_minmax_layers",
       "condition": "stripe",
-      "rmse": 5.865855795699286,
+      "rmse": 7.230135610810934,
       "queries": 5000
     },
     {
       "name": "column100k_ddist_minmax_layers",
       "condition": "stripe",
-      "rmse": 26.129335832321196,
+      "rmse": 28.235622069990395,
       "queries": 5000
     },
     {
       "name": "column_head100k_ddist_minmax_layers",
       "condition": "stripe",
-      "rmse": 28.792763031653045,
+      "rmse": 31.084476039016966,
       "queries": 5000
     },
     {
       "name": "Boxy_smooth100k_ddist_minmax_layers",
       "condition": "stripe",
-      "rmse": 4.8360329821540375,
+      "rmse": 6.333042464590402,
       "queries": 5000
     }
   ],
-  "method": "final",
+  "method": "baseline",
   "protocol_note": "Frozen estimator evaluated on the complete official PCPNet test list. The published test list includes the validation geometries, so this is not a strictly disjoint third split.",
-  "candidate_commit": "c529cefe0007af493961dd386de9f5323568936b",
-  "source_iteration": 279,
-  "estimator_sha256": "39065aea80932c3bb07cc0b4bfeaa7d0b9fafa01f580a980ef984fc4146e86cb",
+  "candidate_commit": "b787b409d4250130d9519c528daded678b76910e",
+  "source_iteration": 0,
+  "estimator_sha256": "95d82614e94ad4391cb0475805fa458403a49475256379f8f4ee34d0acb04f1f",
   "test_split": "testset_all.txt",
   "evaluation_count": 1,
-  "generated_utc": "2026-07-26T08:38:00Z"
+  "generated_utc": "2026-07-26T09:09:03.526998+00:00"
 }

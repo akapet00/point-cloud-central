@@ -36,6 +36,9 @@ Normal orientation is outside this experiment's scope.
 | `notes.md` | Concise cross-iteration research knowledge and failure stages | Generated, untracked |
 | `condition-memory.md` | Per-condition frontier and candidate trade-offs | Generated, untracked |
 | `final-results.json` | Frozen finalist's complete official-test metrics | Generated once, tracked |
+| `baseline-test-results.json` | Same-harness fixed-PCA official-test metrics | Generated once, tracked |
+| `bootstrap-results.json` | Paired shape-level bootstrap intervals | Generated once, tracked |
+| `publication/run-01/` | Tracked records, condition history, metrics, and provenance | Frozen snapshot |
 | `agent-logs/` | Full output from each Pi process | Generated, untracked |
 
 The baseline estimator is fixed-neighborhood PCA with 112 nearest neighbors.
@@ -64,7 +67,7 @@ uv run evaluate.py --tier validation --json validation.json
 
 `run.py` gives editable code anonymous, label-free inputs. On macOS it applies an OS sandbox that blocks raw data, references, protected source, other tiers, prior results, network access, and writes outside predictions. `evaluate.py` never imports editable code.
 
-The test tier is absent from prediction and evaluation CLIs. It requires a separate human-controlled procedure after finalists are frozen. This search's one-time result is preserved in `final-results.json`; do not overwrite it with a later candidate.
+The test tier is absent from prediction and evaluation CLIs. It requires a separate human-controlled procedure after finalists are frozen. This search's one-time finalist result is preserved in `final-results.json`; do not overwrite it with a later candidate. The original fixed-PCA estimator was evaluated afterward, without further model selection, to provide the controlled comparison in `baseline-test-results.json`.
 
 The primary score is `rmse` (lower is better). JSON output also contains per-condition RMSE and PGP. Reported runtime includes estimator import, predictions, and prediction writes, but excludes prepared neighbor search.
 

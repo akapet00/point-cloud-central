@@ -1,0 +1,113 @@
+{
+  "version": 1,
+  "method": "paired nonparametric bootstrap over PCPNet shape entries, stratified by condition",
+  "samples": 50000,
+  "random_seed": 20260726,
+  "conditions": {
+    "clean": {
+      "shapes": 19,
+      "baseline_rmse": 12.280699331929064,
+      "final_rmse": 9.133458705182631,
+      "delta_rmse": -3.147240626746432,
+      "relative_improvement_percent": 25.627535873008473,
+      "final_rmse_ci95": [
+        5.493695107838338,
+        13.30819802986469
+      ],
+      "delta_rmse_ci95": [
+        -4.385315260991417,
+        -2.064960871689718
+      ]
+    },
+    "low": {
+      "shapes": 19,
+      "baseline_rmse": 12.8645147815589,
+      "final_rmse": 10.434996898794722,
+      "delta_rmse": -2.4295178827641775,
+      "relative_improvement_percent": 18.885421829098885,
+      "final_rmse_ci95": [
+        6.671288344082217,
+        14.661775710074672
+      ],
+      "delta_rmse_ci95": [
+        -3.456695182663905,
+        -1.5542012972730728
+      ]
+    },
+    "medium": {
+      "shapes": 19,
+      "baseline_rmse": 18.39686000026041,
+      "final_rmse": 18.199674074041422,
+      "delta_rmse": -0.1971859262189855,
+      "relative_improvement_percent": 1.0718455552534378,
+      "final_rmse_ci95": [
+        13.4130583796284,
+        23.419089311769074
+      ],
+      "delta_rmse_ci95": [
+        -0.6403828644227704,
+        0.14367593797576628
+      ]
+    },
+    "high": {
+      "shapes": 19,
+      "baseline_rmse": 27.606021827139813,
+      "final_rmse": 27.181188227225604,
+      "delta_rmse": -0.42483359991420516,
+      "relative_improvement_percent": 1.538916409522467,
+      "final_rmse_ci95": [
+        21.648871490781282,
+        32.76709750419576
+      ],
+      "delta_rmse_ci95": [
+        -1.0060298091036641,
+        0.040132710374344016
+      ]
+    },
+    "stripe": {
+      "shapes": 16,
+      "baseline_rmse": 13.629344347187295,
+      "final_rmse": 11.32862698831548,
+      "delta_rmse": -2.3007173588718146,
+      "relative_improvement_percent": 16.88061655986127,
+      "final_rmse_ci95": [
+        7.5834104822168875,
+        15.502689154628026
+      ],
+      "delta_rmse_ci95": [
+        -2.9948108507283933,
+        -1.6412921841374235
+      ]
+    },
+    "gradient": {
+      "shapes": 16,
+      "baseline_rmse": 12.785443874697936,
+      "final_rmse": 9.88772332011525,
+      "delta_rmse": -2.897720554582687,
+      "relative_improvement_percent": 22.6642155171257,
+      "final_rmse_ci95": [
+        6.274621717934655,
+        14.034202963515192
+      ],
+      "delta_rmse_ci95": [
+        -3.6465890465806923,
+        -2.189159519442723
+      ]
+    }
+  },
+  "average": {
+    "baseline_rmse": 16.260480693795568,
+    "final_rmse": 14.360944702279184,
+    "delta_rmse": -1.8995359915163839,
+    "relative_improvement_percent": 11.681917818340885,
+    "final_rmse_ci95": [
+      12.569878273738897,
+      16.21918822750665
+    ],
+    "delta_rmse_ci95": [
+      -2.233550727146844,
+      -1.5880037488503085
+    ]
+  },
+  "interpretation": "Negative RMSE deltas favor the finalist. Intervals describe variation across the finite PCPNet test shape entries; they do not correct for repeated model selection on development and validation tiers."
+}
