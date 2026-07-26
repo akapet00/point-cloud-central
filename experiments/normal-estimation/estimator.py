@@ -92,6 +92,7 @@ def estimate_normals(
             FINAL_STATISTIC_COUNT,
             FINAL_STATISTIC_COUNT,
         )
+        previous_correction = np.zeros((normals.shape[0], 1), dtype=np.float64)
         for step, (tukey_cutoff, refinement_count, statistic_count) in enumerate(
             zip(TUKEY_CUTOFFS, refinement_counts, statistic_counts, strict=True)
         ):
@@ -123,19 +124,27 @@ def estimate_normals(
             )
             _, eigenvectors = np.linalg.eigh(covariance)
             refined_normals = eigenvectors[:, :, 0]
+            dot = np.einsum("ni,ni->n", refined_normals, normals, optimize=True)[
+                :, None
+            ]
+            aligned_normals = refined_normals * np.where(dot < 0.0, -1.0, 1.0)
+            correction = np.linalg.norm(
+                aligned_normals - normals, axis=1, keepdims=True
+            )
             if step == 2:
                 thin_sheet = robust_scale <= THIRD_REFINEMENT_MAX_THICKNESS * bandwidth
-                dot = np.einsum("ni,ni->n", refined_normals, normals, optimize=True)[
-                    :, None
-                ]
-                aligned_normals = refined_normals * np.where(dot < 0.0, -1.0, 1.0)
+                decreasing_correction = correction <= previous_correction
                 extrapolated = aligned_normals + THIRD_NORMAL_EXTRAPOLATION * (
                     aligned_normals - normals
                 )
                 extrapolated /= np.linalg.norm(extrapolated, axis=1, keepdims=True)
-                normals = np.where(thin_sheet, extrapolated, normals)
+                thin_result = np.where(
+                    decreasing_correction, extrapolated, aligned_normals
+                )
+                normals = np.where(thin_sheet, thin_result, normals)
             else:
-                normals = refined_normals
+                normals = aligned_normals
+                previous_correction = correction
 
         estimated[start:stop] = normals
 
