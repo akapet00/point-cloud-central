@@ -17,6 +17,7 @@ DISTANCE_DECAY = 2.0
 TUKEY_CUTOFFS = (4.15, 2.77, 2.77)
 THIRD_REFINEMENT_MAX_THICKNESS = 0.1
 THIRD_NORMAL_EXTRAPOLATION = 0.8
+THIRD_DIRECTION_MOMENTUM = 0.25
 MAD_TO_SIGMA = 1.4826
 BATCH_SIZE = 2_048
 
@@ -44,6 +45,8 @@ def estimate_normals(
     positional noise. Two Tukey-biweight IRLS steps refine that normal using
     query-local residual statistics. A third step is accepted only for a thin
     local sheet, where another redescending fit is unlikely to reject noise.
+    Its accepted correction also carries a small amount of the preceding robust
+    normal update, testing a two-step momentum model of residual tangent bias.
     """
     del query_indices
     if neighbor_indices.shape[1] < INITIAL_NEIGHBOR_COUNT:
@@ -82,6 +85,7 @@ def estimate_normals(
         normals = eigenvectors[:, :, 0]
 
         scale_floor = np.finfo(np.float64).eps * np.maximum(bandwidth, 1.0)
+        preceding_normals = normals
         refinement_counts = (
             NEIGHBOR_COUNT,
             FINAL_NEIGHBOR_COUNT,
@@ -129,12 +133,23 @@ def estimate_normals(
                     :, None
                 ]
                 aligned_normals = refined_normals * np.where(dot < 0.0, -1.0, 1.0)
-                extrapolated = aligned_normals + THIRD_NORMAL_EXTRAPOLATION * (
-                    aligned_normals - normals
+                previous_dot = np.einsum(
+                    "ni,ni->n", preceding_normals, normals, optimize=True
+                )[:, None]
+                aligned_preceding = preceding_normals * np.where(
+                    previous_dot < 0.0, -1.0, 1.0
+                )
+                latest_update = aligned_normals - normals
+                previous_update = normals - aligned_preceding
+                extrapolated = (
+                    aligned_normals
+                    + THIRD_NORMAL_EXTRAPOLATION * latest_update
+                    + THIRD_DIRECTION_MOMENTUM * previous_update
                 )
                 extrapolated /= np.linalg.norm(extrapolated, axis=1, keepdims=True)
                 normals = np.where(thin_sheet, extrapolated, normals)
             else:
+                preceding_normals = normals
                 normals = refined_normals
 
         estimated[start:stop] = normals
