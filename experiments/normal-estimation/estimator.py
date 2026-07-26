@@ -12,6 +12,7 @@ NEIGHBOR_COUNT = 112
 FIRST_STATISTIC_COUNT = 64
 FINAL_NEIGHBOR_COUNT = 128
 FINAL_STATISTIC_COUNT = 32
+THIRD_SCALE_COUNT = 36
 INITIAL_NEIGHBOR_COUNT = 224
 DISTANCE_DECAY = 2.0
 TUKEY_CUTOFFS = (4.15, 2.77, 2.77)
@@ -99,11 +100,14 @@ def estimate_normals(
             distance_weights /= distance_weights.sum(axis=1, keepdims=True)
             centered = neighborhoods - centroid[:, None, :]
             residuals = np.einsum("nki,ni->nk", centered, normals, optimize=True)
-            statistic_residuals = residuals[:, :statistic_count]
-            statistic_weights = distance_weights[:, :statistic_count]
-            residual_median = _weighted_median(statistic_residuals, statistic_weights)
+            location_residuals = residuals[:, :statistic_count]
+            location_weights = distance_weights[:, :statistic_count]
+            residual_median = _weighted_median(location_residuals, location_weights)
+            scale_count = THIRD_SCALE_COUNT if step == 2 else statistic_count
+            scale_residuals = residuals[:, :scale_count]
+            scale_weights = distance_weights[:, :scale_count]
             robust_scale = MAD_TO_SIGMA * _weighted_median(
-                np.abs(statistic_residuals - residual_median), statistic_weights
+                np.abs(scale_residuals - residual_median), scale_weights
             )
             robust_scale = np.maximum(robust_scale, scale_floor)
             normalized = (residuals - residual_median) / (tukey_cutoff * robust_scale)
