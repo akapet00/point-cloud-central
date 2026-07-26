@@ -4,6 +4,7 @@ __pycache__/
 .venv/
 uv.lock
 progress.png
+final-comparison.png
 
 data/PCPNet/
 experiments/normal-estimation/.agent-workspace/

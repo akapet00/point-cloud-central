@@ -35,6 +35,7 @@ Normal orientation is outside this experiment's scope.
 | `state.json`, `results.tsv` | Regenerated views of canonical records | Generated, untracked |
 | `notes.md` | Concise cross-iteration research knowledge and failure stages | Generated, untracked |
 | `condition-memory.md` | Per-condition frontier and candidate trade-offs | Generated, untracked |
+| `final-results.json` | Frozen finalist's complete official-test metrics | Generated once, tracked |
 | `agent-logs/` | Full output from each Pi process | Generated, untracked |
 
 The baseline estimator is fixed-neighborhood PCA with 112 nearest neighbors.
@@ -63,7 +64,7 @@ uv run evaluate.py --tier validation --json validation.json
 
 `run.py` gives editable code anonymous, label-free inputs. On macOS it applies an OS sandbox that blocks raw data, references, protected source, other tiers, prior results, network access, and writes outside predictions. `evaluate.py` never imports editable code.
 
-The test tier is absent from prediction and evaluation CLIs. It requires a separate human-controlled procedure after finalists are frozen.
+The test tier is absent from prediction and evaluation CLIs. It requires a separate human-controlled procedure after finalists are frozen. This search's one-time result is preserved in `final-results.json`; do not overwrite it with a later candidate.
 
 The primary score is `rmse` (lower is better). JSON output also contains per-condition RMSE and PGP. Reported runtime includes estimator import, predictions, and prediction writes, but excludes prepared neighbor search.
 
@@ -144,7 +145,7 @@ PFF-Net reports:
 
 The published PCA row uses CGAL and is a protocol check rather than a bit-for-bit NumPy baseline.
 
-A later notebook at `notebooks/03-normal-estimation-search/main.ipynb` will generate a progress plot from `results.tsv`: all attempts, retained improvements, running best, reference lines, per-condition progress, and the accuracy-runtime Pareto frontier.
+The final analysis notebook at `notebooks/03-normal-estimation-search/main.ipynb` rebuilds the search summary from canonical records, visualizes all attempts without overcrowding, reports per-condition progress and the accuracy-runtime frontier, and compares the frozen official-test result with published PCPNet references.
 
 ## References
 
