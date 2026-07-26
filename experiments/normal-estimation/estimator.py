@@ -12,6 +12,7 @@ NEIGHBOR_COUNT = 112
 FIRST_STATISTIC_COUNT = 64
 FINAL_NEIGHBOR_COUNT = 128
 FINAL_STATISTIC_COUNT = 32
+THIRD_SCALE_COUNT = 34
 INITIAL_NEIGHBOR_COUNT = 224
 DISTANCE_DECAY = 2.0
 TUKEY_CUTOFFS = (4.15, 2.77, 2.77)
@@ -41,8 +42,9 @@ def estimate_normals(
 
     A 224-neighbor Gaussian tail stabilizes the provisional tangent under
     positional noise. Two Tukey-biweight IRLS steps refine that normal using
-    query-local residual statistics. A third step is accepted only for a thin
-    local sheet, where another redescending fit is unlikely to reject noise.
+    query-local residual statistics. The optional third step centers residuals
+    on 32 neighbors but uses 34 for a stabler MAD, and is accepted only for a
+    thin local sheet where further redescending rejection is reliable.
     """
     del query_indices
     if neighbor_indices.shape[1] < INITIAL_NEIGHBOR_COUNT:
@@ -102,8 +104,11 @@ def estimate_normals(
             statistic_residuals = residuals[:, :statistic_count]
             statistic_weights = distance_weights[:, :statistic_count]
             residual_median = _weighted_median(statistic_residuals, statistic_weights)
+            scale_count = THIRD_SCALE_COUNT if step == 2 else statistic_count
+            scale_residuals = residuals[:, :scale_count]
+            scale_weights = distance_weights[:, :scale_count]
             robust_scale = MAD_TO_SIGMA * _weighted_median(
-                np.abs(statistic_residuals - residual_median), statistic_weights
+                np.abs(scale_residuals - residual_median), scale_weights
             )
             robust_scale = np.maximum(robust_scale, scale_floor)
             normalized = (residuals - residual_median) / (tukey_cutoff * robust_scale)
