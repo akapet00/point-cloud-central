@@ -16,6 +16,7 @@ INITIAL_NEIGHBOR_COUNT = 224
 DISTANCE_DECAY = 2.0
 TUKEY_CUTOFFS = (4.15, 2.77, 2.77)
 THIRD_REFINEMENT_MAX_THICKNESS = 0.1
+THIRD_COVARIANCE_SHRINKAGE = 0.1
 MAD_TO_SIGMA = 1.4826
 BATCH_SIZE = 2_048
 
@@ -41,8 +42,9 @@ def estimate_normals(
 
     A 224-neighbor Gaussian tail stabilizes the provisional tangent under
     positional noise. Two Tukey-biweight IRLS steps refine that normal using
-    query-local residual statistics. A third step is accepted only for a thin
-    local sheet, where another redescending fit is unlikely to reject noise.
+    query-local residual statistics. A lightly covariance-shrunk third step is
+    accepted only for a thin local sheet, where another redescending fit is
+    unlikely to reject noise.
     """
     del query_indices
     if neighbor_indices.shape[1] < INITIAL_NEIGHBOR_COUNT:
@@ -113,13 +115,18 @@ def estimate_normals(
             weights = distance_weights * robust_weights
             weights /= weights.sum(axis=1, keepdims=True)
             centroid = np.einsum("nk,nki->ni", weights, neighborhoods, optimize=True)
-            covariance = np.einsum(
+            refined_covariance = np.einsum(
                 "nk,nki,nkj->nij",
                 weights,
                 neighborhoods - centroid[:, None, :],
                 neighborhoods - centroid[:, None, :],
                 optimize=True,
             )
+            if step == 2:
+                refined_covariance = (
+                    1.0 - THIRD_COVARIANCE_SHRINKAGE
+                ) * refined_covariance + THIRD_COVARIANCE_SHRINKAGE * covariance
+            covariance = refined_covariance
             _, eigenvectors = np.linalg.eigh(covariance)
             refined_normals = eigenvectors[:, :, 0]
             if step == 2:
