@@ -31,6 +31,13 @@ def _weighted_median(values: np.ndarray, weights: np.ndarray) -> np.ndarray:
     return np.take_along_axis(sorted_values, median_indices[:, None], axis=1)
 
 
+def _align_normals(reference: np.ndarray, candidates: np.ndarray) -> np.ndarray:
+    """Resolve candidate signs to the hemisphere of the reference normals."""
+    agreement = np.einsum("ni,ni->n", reference, candidates, optimize=True)
+    signs = np.where(agreement < 0.0, -1.0, 1.0)
+    return candidates * signs[:, None]
+
+
 def estimate_normals(
     points: np.ndarray,
     query_indices: np.ndarray,
@@ -42,7 +49,7 @@ def estimate_normals(
     A 224-neighbor Gaussian tail stabilizes the provisional tangent under
     positional noise. Two Tukey-biweight IRLS steps refine that normal using
     query-local residual statistics. A third step is accepted only for a thin
-    local sheet, where another redescending fit is unlikely to reject noise.
+    local sheet whose last two sign-aligned corrections point consistently.
     """
     del query_indices
     if neighbor_indices.shape[1] < INITIAL_NEIGHBOR_COUNT:
@@ -79,6 +86,8 @@ def estimate_normals(
         )
         _, eigenvectors = np.linalg.eigh(covariance)
         normals = eigenvectors[:, :, 0]
+        aligned_second_normals = normals
+        preceding_update = np.zeros_like(normals)
 
         scale_floor = np.finfo(np.float64).eps * np.maximum(bandwidth, 1.0)
         refinement_counts = (
@@ -122,9 +131,23 @@ def estimate_normals(
             )
             _, eigenvectors = np.linalg.eigh(covariance)
             refined_normals = eigenvectors[:, :, 0]
-            if step == 2:
+            if step == 1:
+                aligned_second_normals = _align_normals(normals, refined_normals)
+                preceding_update = aligned_second_normals - normals
+                normals = refined_normals
+            elif step == 2:
+                aligned_third_normals = _align_normals(
+                    aligned_second_normals, refined_normals
+                )
+                current_update = aligned_third_normals - aligned_second_normals
+                update_dot = np.einsum(
+                    "ni,ni->n", preceding_update, current_update, optimize=True
+                )
+                consistent_update = update_dot[:, None] > 0.0
                 thin_sheet = robust_scale <= THIRD_REFINEMENT_MAX_THICKNESS * bandwidth
-                normals = np.where(thin_sheet, refined_normals, normals)
+                normals = np.where(
+                    thin_sheet & consistent_update, refined_normals, normals
+                )
             else:
                 normals = refined_normals
 
