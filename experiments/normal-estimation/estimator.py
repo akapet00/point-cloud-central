@@ -16,6 +16,7 @@ INITIAL_NEIGHBOR_COUNT = 224
 DISTANCE_DECAY = 2.0
 TUKEY_CUTOFFS = (4.15, 2.77, 2.77)
 THIRD_REFINEMENT_MAX_THICKNESS = 0.1
+THIRD_COVARIANCE_SHRINKAGE = 0.025
 MAD_TO_SIGMA = 1.4826
 BATCH_SIZE = 2_048
 
@@ -113,6 +114,7 @@ def estimate_normals(
             weights = distance_weights * robust_weights
             weights /= weights.sum(axis=1, keepdims=True)
             centroid = np.einsum("nk,nki->ni", weights, neighborhoods, optimize=True)
+            preceding_covariance = covariance
             covariance = np.einsum(
                 "nk,nki,nkj->nij",
                 weights,
@@ -120,6 +122,10 @@ def estimate_normals(
                 neighborhoods - centroid[:, None, :],
                 optimize=True,
             )
+            if step == 2:
+                covariance = (
+                    1.0 - THIRD_COVARIANCE_SHRINKAGE
+                ) * covariance + THIRD_COVARIANCE_SHRINKAGE * preceding_covariance
             _, eigenvectors = np.linalg.eigh(covariance)
             refined_normals = eigenvectors[:, :, 0]
             if step == 2:
