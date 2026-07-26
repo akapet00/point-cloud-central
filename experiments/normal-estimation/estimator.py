@@ -92,6 +92,7 @@ def estimate_normals(
             FINAL_STATISTIC_COUNT,
             FINAL_STATISTIC_COUNT,
         )
+        preceding_normals = normals
         for step, (tukey_cutoff, refinement_count, statistic_count) in enumerate(
             zip(TUKEY_CUTOFFS, refinement_counts, statistic_counts, strict=True)
         ):
@@ -125,16 +126,50 @@ def estimate_normals(
             refined_normals = eigenvectors[:, :, 0]
             if step == 2:
                 thin_sheet = robust_scale <= THIRD_REFINEMENT_MAX_THICKNESS * bandwidth
-                dot = np.einsum("ni,ni->n", refined_normals, normals, optimize=True)[
-                    :, None
-                ]
-                aligned_normals = refined_normals * np.where(dot < 0.0, -1.0, 1.0)
-                extrapolated = aligned_normals + THIRD_NORMAL_EXTRAPOLATION * (
-                    aligned_normals - normals
+                dot = np.einsum("ni,ni->n", refined_normals, normals, optimize=True)
+                aligned_normals = refined_normals * np.where(
+                    dot[:, None] < 0.0, -1.0, 1.0
+                )
+                preceding_dot = np.einsum(
+                    "ni,ni->n", preceding_normals, normals, optimize=True
+                )
+                aligned_preceding = preceding_normals * np.where(
+                    preceding_dot[:, None] < 0.0, -1.0, 1.0
+                )
+                preceding_update = normals - aligned_preceding
+                latest_update = aligned_normals - normals
+                preceding_squared = np.einsum(
+                    "ni,ni->n", preceding_update, preceding_update, optimize=True
+                )
+                projection_scale = np.divide(
+                    np.einsum(
+                        "ni,ni->n", latest_update, preceding_update, optimize=True
+                    ),
+                    preceding_squared,
+                    out=np.zeros_like(preceding_squared),
+                    where=preceding_squared > np.finfo(np.float64).eps,
+                )
+                orthogonal_update = (
+                    latest_update - projection_scale[:, None] * preceding_update
+                )
+                latest_length = np.linalg.norm(latest_update, axis=1, keepdims=True)
+                orthogonal_length = np.linalg.norm(
+                    orthogonal_update, axis=1, keepdims=True
+                )
+                orthogonal_update = np.divide(
+                    orthogonal_update * latest_length,
+                    orthogonal_length,
+                    out=np.zeros_like(orthogonal_update),
+                    where=orthogonal_length > np.finfo(np.float64).eps,
+                )
+                extrapolated = (
+                    aligned_normals + THIRD_NORMAL_EXTRAPOLATION * orthogonal_update
                 )
                 extrapolated /= np.linalg.norm(extrapolated, axis=1, keepdims=True)
                 normals = np.where(thin_sheet, extrapolated, normals)
             else:
+                if step == 1:
+                    preceding_normals = normals
                 normals = refined_normals
 
         estimated[start:stop] = normals
