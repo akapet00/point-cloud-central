@@ -17,6 +17,8 @@ DISTANCE_DECAY = 2.0
 TUKEY_CUTOFFS = (4.15, 2.77, 2.77)
 THIRD_REFINEMENT_MAX_THICKNESS = 0.1
 THIRD_NORMAL_EXTRAPOLATION = 0.8
+THIRD_EXTRAPOLATION_MIN_MASS = 0.25
+THIRD_EXTRAPOLATION_FULL_MASS = 0.5
 MAD_TO_SIGMA = 1.4826
 BATCH_SIZE = 2_048
 
@@ -112,7 +114,8 @@ def estimate_normals(
             robust_weights = np.square(1.0 - normalized * normalized) * inside
 
             weights = distance_weights * robust_weights
-            weights /= weights.sum(axis=1, keepdims=True)
+            retained_mass = weights.sum(axis=1, keepdims=True)
+            weights /= retained_mass
             centroid = np.einsum("nk,nki->ni", weights, neighborhoods, optimize=True)
             covariance = np.einsum(
                 "nk,nki,nkj->nij",
@@ -129,8 +132,16 @@ def estimate_normals(
                     :, None
                 ]
                 aligned_normals = refined_normals * np.where(dot < 0.0, -1.0, 1.0)
-                extrapolated = aligned_normals + THIRD_NORMAL_EXTRAPOLATION * (
-                    aligned_normals - normals
+                mass_confidence = np.clip(
+                    (retained_mass - THIRD_EXTRAPOLATION_MIN_MASS)
+                    / (THIRD_EXTRAPOLATION_FULL_MASS - THIRD_EXTRAPOLATION_MIN_MASS),
+                    0.0,
+                    1.0,
+                )
+                extrapolated = aligned_normals + (
+                    THIRD_NORMAL_EXTRAPOLATION
+                    * mass_confidence
+                    * (aligned_normals - normals)
                 )
                 extrapolated /= np.linalg.norm(extrapolated, axis=1, keepdims=True)
                 normals = np.where(thin_sheet, extrapolated, normals)
