@@ -16,6 +16,7 @@ INITIAL_NEIGHBOR_COUNT = 224
 DISTANCE_DECAY = 2.0
 TUKEY_CUTOFFS = (4.15, 2.77, 2.77)
 THIRD_REFINEMENT_MAX_THICKNESS = 0.1
+THIRD_NORMAL_EXTRAPOLATION = 0.4
 MAD_TO_SIGMA = 1.4826
 BATCH_SIZE = 2_048
 
@@ -124,7 +125,17 @@ def estimate_normals(
             refined_normals = eigenvectors[:, :, 0]
             if step == 2:
                 thin_sheet = robust_scale <= THIRD_REFINEMENT_MAX_THICKNESS * bandwidth
-                normals = np.where(thin_sheet, refined_normals, normals)
+                alignment = np.where(
+                    np.sum(refined_normals * normals, axis=1, keepdims=True) < 0.0,
+                    -1.0,
+                    1.0,
+                )
+                aligned_normals = alignment * refined_normals
+                extrapolated = aligned_normals + THIRD_NORMAL_EXTRAPOLATION * (
+                    aligned_normals - normals
+                )
+                extrapolated /= np.linalg.norm(extrapolated, axis=1, keepdims=True)
+                normals = np.where(thin_sheet, extrapolated, normals)
             else:
                 normals = refined_normals
 
