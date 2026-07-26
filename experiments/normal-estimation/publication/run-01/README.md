@@ -4,7 +4,7 @@ This directory freezes the machine-readable evidence used by the accompanying ar
 
 ## Files
 
-- `records.jsonl`: all 323 canonical records, iterations 0 through 322.
+- `records.jsonl`: all 323 canonical records: one baseline and 322 agent iterations.
 - `results.tsv`: aggregate search history.
 - `condition-results.tsv`: per-condition development and validation history.
 - `baseline-test-results.json`: controlled fixed-k PCA test result.

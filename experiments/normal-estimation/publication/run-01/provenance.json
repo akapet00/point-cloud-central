@@ -11,6 +11,8 @@
   "baseline_estimator_sha256": "95d82614e94ad4391cb0475805fa458403a49475256379f8f4ee34d0acb04f1f",
   "records": 323,
   "agent_iterations": 322,
+  "successful_agent_iterations": 304,
+  "crashed_agent_iterations": 18,
   "measured_records_including_baseline": 305,
   "validation_evaluations": 25,
   "statuses": {
