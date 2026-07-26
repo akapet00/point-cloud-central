@@ -16,6 +16,7 @@ INITIAL_NEIGHBOR_COUNT = 224
 DISTANCE_DECAY = 2.0
 TUKEY_CUTOFFS = (4.15, 2.77, 2.77)
 THIRD_REFINEMENT_MAX_THICKNESS = 0.1
+THIRD_EXTRAPOLATION_MIN_RETAINED_MASS = 0.5
 THIRD_NORMAL_EXTRAPOLATION = 0.8
 MAD_TO_SIGMA = 1.4826
 BATCH_SIZE = 2_048
@@ -43,7 +44,8 @@ def estimate_normals(
     A 224-neighbor Gaussian tail stabilizes the provisional tangent under
     positional noise. Two Tukey-biweight IRLS steps refine that normal using
     query-local residual statistics. A third step is accepted only for a thin
-    local sheet, where another redescending fit is unlikely to reject noise.
+    local sheet; its correction is extrapolated only when Tukey rejection
+    retains at least half of the Gaussian weight mass.
     """
     del query_indices
     if neighbor_indices.shape[1] < INITIAL_NEIGHBOR_COUNT:
@@ -112,7 +114,8 @@ def estimate_normals(
             robust_weights = np.square(1.0 - normalized * normalized) * inside
 
             weights = distance_weights * robust_weights
-            weights /= weights.sum(axis=1, keepdims=True)
+            retained_mass = weights.sum(axis=1, keepdims=True)
+            weights /= retained_mass
             centroid = np.einsum("nk,nki->ni", weights, neighborhoods, optimize=True)
             covariance = np.einsum(
                 "nk,nki,nkj->nij",
@@ -133,7 +136,13 @@ def estimate_normals(
                     aligned_normals - normals
                 )
                 extrapolated /= np.linalg.norm(extrapolated, axis=1, keepdims=True)
-                normals = np.where(thin_sheet, extrapolated, normals)
+                use_extrapolation = thin_sheet & (
+                    retained_mass >= THIRD_EXTRAPOLATION_MIN_RETAINED_MASS
+                )
+                accepted_normals = np.where(
+                    use_extrapolation, extrapolated, aligned_normals
+                )
+                normals = np.where(thin_sheet, accepted_normals, normals)
             else:
                 normals = refined_normals
 
