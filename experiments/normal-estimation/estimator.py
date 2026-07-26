@@ -44,6 +44,8 @@ def estimate_normals(
     positional noise. Two Tukey-biweight IRLS steps refine that normal using
     query-local residual statistics. A third step is accepted only for a thin
     local sheet, where another redescending fit is unlikely to reject noise.
+    Its extrapolation keeps only the persistent component shared by the two
+    latest robust normal updates.
     """
     del query_indices
     if neighbor_indices.shape[1] < INITIAL_NEIGHBOR_COUNT:
@@ -81,6 +83,7 @@ def estimate_normals(
         _, eigenvectors = np.linalg.eigh(covariance)
         normals = eigenvectors[:, :, 0]
 
+        previous_refined_normals = normals
         scale_floor = np.finfo(np.float64).eps * np.maximum(bandwidth, 1.0)
         refinement_counts = (
             NEIGHBOR_COUNT,
@@ -129,12 +132,34 @@ def estimate_normals(
                     :, None
                 ]
                 aligned_normals = refined_normals * np.where(dot < 0.0, -1.0, 1.0)
-                extrapolated = aligned_normals + THIRD_NORMAL_EXTRAPOLATION * (
-                    aligned_normals - normals
+                previous_dot = np.einsum(
+                    "ni,ni->n", previous_refined_normals, normals, optimize=True
+                )[:, None]
+                aligned_previous = previous_refined_normals * np.where(
+                    previous_dot < 0.0, -1.0, 1.0
+                )
+                preceding_update = normals - aligned_previous
+                latest_update = aligned_normals - normals
+                preceding_squared_norm = np.einsum(
+                    "ni,ni->n", preceding_update, preceding_update, optimize=True
+                )[:, None]
+                projection_scale = np.divide(
+                    np.einsum(
+                        "ni,ni->n", latest_update, preceding_update, optimize=True
+                    )[:, None],
+                    preceding_squared_norm,
+                    out=np.zeros_like(preceding_squared_norm),
+                    where=preceding_squared_norm > 0.0,
+                )
+                persistent_update = preceding_update * np.maximum(projection_scale, 0.0)
+                extrapolated = (
+                    aligned_normals + THIRD_NORMAL_EXTRAPOLATION * persistent_update
                 )
                 extrapolated /= np.linalg.norm(extrapolated, axis=1, keepdims=True)
                 normals = np.where(thin_sheet, extrapolated, normals)
             else:
+                if step == 1:
+                    previous_refined_normals = normals
                 normals = refined_normals
 
         estimated[start:stop] = normals
