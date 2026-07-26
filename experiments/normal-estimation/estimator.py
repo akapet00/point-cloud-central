@@ -17,6 +17,7 @@ DISTANCE_DECAY = 2.0
 TUKEY_CUTOFFS = (4.15, 2.77, 2.77)
 THIRD_REFINEMENT_MAX_THICKNESS = 0.1
 THIRD_NORMAL_EXTRAPOLATION = 0.8
+THIRD_TRANSVERSE_EXTRAPOLATION = 0.7
 MAD_TO_SIGMA = 1.4826
 BATCH_SIZE = 2_048
 
@@ -92,6 +93,7 @@ def estimate_normals(
             FINAL_STATISTIC_COUNT,
             FINAL_STATISTIC_COUNT,
         )
+        first_refined_normals = normals
         for step, (tukey_cutoff, refinement_count, statistic_count) in enumerate(
             zip(TUKEY_CUTOFFS, refinement_counts, statistic_counts, strict=True)
         ):
@@ -129,13 +131,38 @@ def estimate_normals(
                     :, None
                 ]
                 aligned_normals = refined_normals * np.where(dot < 0.0, -1.0, 1.0)
-                extrapolated = aligned_normals + THIRD_NORMAL_EXTRAPOLATION * (
-                    aligned_normals - normals
+                first_dot = np.einsum(
+                    "ni,ni->n", first_refined_normals, normals, optimize=True
+                )[:, None]
+                aligned_first = first_refined_normals * np.where(
+                    first_dot < 0.0, -1.0, 1.0
+                )
+                previous_update = normals - aligned_first
+                latest_update = aligned_normals - normals
+                previous_squared = np.einsum(
+                    "ni,ni->n", previous_update, previous_update, optimize=True
+                )[:, None]
+                projection_scale = np.divide(
+                    np.einsum(
+                        "ni,ni->n", latest_update, previous_update, optimize=True
+                    )[:, None],
+                    previous_squared,
+                    out=np.zeros((stop - start, 1), dtype=np.float64),
+                    where=previous_squared > 0.0,
+                )
+                persistent_update = projection_scale * previous_update
+                transverse_update = latest_update - persistent_update
+                extrapolated = (
+                    aligned_normals
+                    + THIRD_NORMAL_EXTRAPOLATION * persistent_update
+                    + THIRD_TRANSVERSE_EXTRAPOLATION * transverse_update
                 )
                 extrapolated /= np.linalg.norm(extrapolated, axis=1, keepdims=True)
                 normals = np.where(thin_sheet, extrapolated, normals)
             else:
                 normals = refined_normals
+                if step == 0:
+                    first_refined_normals = refined_normals
 
         estimated[start:stop] = normals
 
